@@ -21,7 +21,7 @@ clear projPathDirs
 
 %% setup global vars
 
-OUTSTR = 'sch200' ;
+OUTSTR = 'sch400' ;
 
 %% make output directory vars
 
@@ -34,9 +34,9 @@ DD.RAW = strcat(DATADIR, '/raw/' ) ;
 
 finfo.TR = 0.72 ; 
 
-finfo.nnodes = 200 ; 
+finfo.nnodes = 400 ; 
 finfo.ntp = 1200 ; 
-finfo.nnodes_wsubc = 255 ; 
+finfo.nnodes_wsubc = 455 ; 
 
 %% handy inline functions
 
@@ -44,7 +44,7 @@ tv = @(mat_) triuvec(mat_,1) ;
 ztv = @(mat_) zscore(triuvec(mat_,1)) ; 
 
 % oneliner to plot
-cortexplot = @(x_) parc_plot(surfss,annotm,'schaefer200-yeo17', x_(:),...
+cortexplot = @(x_) parc_plot(surfss,annotm,'schaefer400-yeo17', x_(:),...
         'cmap',parula(100),...
         'viewcMap',0,'newFig',0,'viewStr','all') ;
 
@@ -70,8 +70,8 @@ sublist.subset2 = cellstr(string(load([ DD.INTERM 'sub_list_subset2.txt']))) ;
 
 imglob = 'REST1_RL' ;
 datStr = load_hcp_alldata(...
-    [ DD.INTERM '/hcp352_nusregts_FIX2phys_schaefer200/' ],...
-    'schaefer200-yeo17',...
+    [ DD.INTERM '/hcp352_nusregts_FIX2phys_schaefer400/' ],...
+    'schaefer400-yeo17',...
     sublist.all, ...
     ['*' imglob '*']) ; 
 cainfo = load('~/joshstuff/matlabfaskowit/data/nodes_2_canon.mat') ;
@@ -80,6 +80,6 @@ NSUBS = length(datStr) ;
 
 %% parcellation setup
 
-parc.ca = [ cainfo.schaef_str.map2ca('schaefer200_17net') ; ones(55,1).*18 ] ;
+parc.ca = [ cainfo.schaef_str.map2ca('schaefer400_17net') ; ones(55,1).*18 ] ;
 parc.names = [ cainfo.schaef_str.sch17 ; 'subc+cereb' ] ;
 
