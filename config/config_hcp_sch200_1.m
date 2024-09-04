@@ -43,12 +43,6 @@ finfo.nnodes_wsubc = 255 ;
 tv = @(mat_) triuvec(mat_,1) ; 
 ztv = @(mat_) zscore(triuvec(mat_,1)) ; 
 
-% oneliner to plot
-cortexplot = @(x_) parc_plot(surfss,annotm,'schaefer200-yeo17', x_(:),...
-        'cmap',parula(100),...
-        'viewcMap',0,'newFig',0,'viewStr','all') ;
-
-
 %% load some viz stuff
 
 parcpath = '~/joshstuff/git_pull/parc_plotter/' ; 
@@ -59,6 +53,11 @@ surfss = surf.surfStruct ;
 
 annots = load([parcpath '/data/fsaverage/mat/' 'fsaverage_annots.mat']) ;
 annotm = annots.allAnnots ;
+
+% oneliner to plot
+cortexplot = @(x_) parc_plot(surfss,annotm,'schaefer200-yeo17', x_(:),...
+        'cmap',parula(100),...
+        'viewcMap',0,'newFig',0,'viewStr','all') ;
 
 %% just put the subject list here
 
@@ -77,6 +76,14 @@ datStr = load_hcp_alldata(...
 cainfo = load('~/joshstuff/matlabfaskowit/data/nodes_2_canon.mat') ;
 
 NSUBS = length(datStr) ; 
+
+% really quick it would be nice to have a meanfc
+meanfc = zeros(finfo.nnodes) ; 
+for idx = 1:NSUBS
+    meanfc = meanfc + corr(datStr(idx).ts(:,1:finfo.nnodes)) ; 
+end
+meanfc = meanfc ./ NSUBS ;  
+meanfc = (meanfc + meanfc') ./ 2 ; 
 
 %% parcellation setup
 

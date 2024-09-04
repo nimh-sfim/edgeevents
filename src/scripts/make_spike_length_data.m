@@ -10,13 +10,13 @@ run('./config/config_hcp_sch200_1.m')
 
 %%
 
-SPK_THR = 2 ; 
+SPK_THR = 2.25 ; 
 
 for idx = 1:NSUBS
 
     disp(idx)
 
-    filename = [DD.PROC '/' datStr(idx).sub '_' OUTSTR '_spike_len.mat'] ; 
+    filename = [DD.PROC '/' datStr(idx).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
 
     if isfile(filename)
         disp(['already finsiehd sub: ' datStr(idx).sub ])
@@ -29,7 +29,7 @@ for idx = 1:NSUBS
     abv_thr = tmpets > SPK_THR ; 
     [spike_len_mat,spike_len_cell] = spk_lenmat(abv_thr) ; 
 
-    save([DD.PROC '/' datStr(idx).sub '_' OUTSTR '_spike_len.mat'],...
+    save([DD.PROC '/' datStr(idx).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'],...
         'spike_len_cell','spike_len_mat','-v7.3')
 
 end
@@ -48,7 +48,7 @@ for sdx = subsets
     
         sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
     
-        filename = [DD.PROC '/' datStr(sind).sub '_' OUTSTR '_spike_len.mat'] ; 
+        filename = [DD.PROC '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
         readdat = load(filename,'spike_len_cell') ; 
     
         spike_lengths.(sdx{1}){idx} = readdat.spike_len_cell  ; 
@@ -57,10 +57,8 @@ for sdx = subsets
 
 end
 
-%%
-
 for sdx = subsets
-    tmp = cell2mat(arrayfun(@(i_) int32(cell2mat(spike_lengths.(sdx{1}){i_}')),1:length(spike_lengths.subset1)','UniformOutput',false)') ;
+    tmp = cell2mat(arrayfun(@(i_) int32(cell2mat(spike_lengths.(sdx{1}){i_}')),1:length(spike_lengths.(sdx{1}))','UniformOutput',false)') ;
     % get rid of 0 lengths
     spike_lengths.all.(sdx{1}) = nonzeros(tmp) ; 
 end
@@ -75,7 +73,6 @@ spike_prct.all.subset2 = prctile(spike_lengths.all.subset2, 1:100 ) ;
 for sdx = subsets
 
     spike_prct.(sdx{1}).prct = nan(100,length(sublist.(sdx{1}))) ; 
-
 
     for idx = 1:length(sublist.(sdx{1}))
         disp(idx)
@@ -107,56 +104,35 @@ ylim([0 15])
 
 %%
 
-e1 = [ 1 2 4 6 maxspk ] ; 
-e2 = [ 1 2 3 4 5 maxspk ] ; 
+maxspk = 100 ; 
 
+spike_dist = discretize(spike_lengths.all.subset1,1:1:maxspk) ; 
+spike_tab = tabulate(spike_dist) ; 
 
+% how much in lowest spike
+low_bin_pct = spike_tab(1,3) ; 
 
+% now find a high bin to get as near as possible
+[~,mi] = min(abs(flipud(cumsum(flipud(spike_tab(2:end,3))))-low_bin_pct)) ; 
+high_bin = mi + 1 ; % add 1 because we were aready looking at 2:end
+
+% the low-med-high bins
+lowmedhigh_edges = [ 1 2 high_bin maxspk ] ; 
 % 
-% %%
-% 
-% spike_prct.subset1.agg.by5 = prctile(all_spike_lengths, 5:5:100 ) ; 
-% spike_prct.subset1.agg.bylog10 = prctile(all_spike_lengths, logspace(log10(1),log10(100),20) ) ; 
-% spike_prct.subset1.agg.byexp2 = prctile(all_spike_lengths, linspace(1,10,20).^2 ) ; 
-% 
-% %% look at spike length for each pers
-% 
-% spike_prct.subset1.by5 = nan(20,length(sublist.subset1)) ; 
-% spike_prct.subset1.byexp2 = nan(20,length(sublist.subset1)) ; 
-% 
-% for idx = 1:length(sublist.subset1)
-% 
-%     disp(idx)
-% 
-%     tmp = int32(cell2mat(spike_lengths.subset1{idx}')) ; 
-% 
-%     spike_prct.subset1.by5(:,idx) = prctile(tmp, 5:5:100 ) ; 
-%     spike_prct.subset1.byexp2(:,idx) = prctile(tmp, linspace(1,10,20).^2 ) ; 
-% end
-% 
-% %% divide up 
-% 
-% maxspk = max(spike_prct.subset1.agg.by5) ; 
-% thrs = [ 2 3 4 maxspk ] ; 
-% prct_inc = 5:5:100 ; 
-% 
-% prct_vals = nan(length(thrs),1) ; 
-% for idx = 1:length(thrs)
-%     prct_vals(idx) = prct_inc(find(spike_prct.subset1.agg.by5==thrs(idx),1,'last')) ; 
-% end
-% 
-% %%
 
 %% 
 
-% tiledlayout
+% tiledlayout(1,2)
 
-dd = discretize(spike_lengths.all.subset1,e1) ; 
-ca = parula(max(dd)) ;
+cm = plasma(3) ; 
+
+clf
+
+dd = discretize(spike_lengths.all.subset1,lowmedhigh_edges) ; 
 
 for idx = 1:max(dd)
 
-    histogram(spike_lengths.all.subset1(dd==idx), 0:1:maxspk,FaceColor=ca(idx,:)) ;
+    histogram(spike_lengths.all.subset1(dd==idx), 0:1:40,FaceColor=cm(idx,:)) ;
     % [min(spike_lengths.all.subset1(dd==idx)) max(spike_lengths.all.subset1(dd==idx))]
     sum(dd==idx)./length(dd)
     hold on
@@ -164,35 +140,48 @@ for idx = 1:max(dd)
 end
 hold off
 
-%%
+xlim([1 20.5])
 
-dd = discretize(spike_lengths.all.subset1,[1 5 9 maxspk]) ; 
-ca = parula(max(dd)) ;
+xlabel('spike length')
+ylabel('count')
 
-for idx = 1:max(dd)
+xticks((1:20)+0.5)
+xticklabels(cellstr(num2str((1:20)')))
+xtickangle(0)
 
-    histogram(spike_lengths.all.subset1(dd==idx), 0:1:maxspk,FaceColor=ca(idx,:)) ;
-    % [min(spike_lengths.all.subset1(dd==idx)) max(spike_lengths.all.subset1(dd==idx))]
-    sum(dd==idx)./length(dd)
-    hold on
+axis square
 
-end
-hold off
+hist_gca = gca ;
+group_lab = { ...
+    strcat('short (',num2str(round(sum(dd==1)/length(dd)*100)),'%)') ... 
+    strcat('intermed. (',num2str(round(sum(dd==2)/length(dd)*100)),'%)') ... 
+    strcat('long (',num2str(round(sum(dd==3)/length(dd)*100)),'%)') ... 
+    }
 
+legend(hist_gca,group_lab,'Location','southeast')
 
+aa = axes('Parent',gcf,'Position',[.48 .5 .4 .38],'Units','normalized')
+box on
+plot(cumsum(spike_tab(1:20,3)),'.-','MarkerSize',15,'Color',[0.5 0.5 0.5])
+xlabel('spike length')
+ylabel('cumulative percent')
+xlim([1 20])
+ylim([1 100])
+axis square
+xticks([1 5 10 15 20])
+yticks([0 20 40 60 80 100])
+
+set(gcf,'Position',[100 100 400 400])
 
 %% 
 
-dd = discretize(spike_lengths.all.subset1,e2) ; 
-ca = parula(max(dd)) ;
+set(gcf,'Color','w')
 
-for idx = 1:max(dd)
+out_figdir = [ './reports/figures/figA/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/spike_hist.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
 
-    histogram(spike_lengths.all.subset1(dd==idx), 0:1:maxspk,FaceColor=ca(idx,:)) ;
-    % [min(spike_lengths.all.subset1(dd==idx)) max(spike_lengths.all.subset1(dd==idx))]
-    sum(dd==idx)./length(dd)
-    hold on
 
-end
-hold off
 

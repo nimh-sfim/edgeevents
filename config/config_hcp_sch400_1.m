@@ -78,6 +78,14 @@ cainfo = load('~/joshstuff/matlabfaskowit/data/nodes_2_canon.mat') ;
 
 NSUBS = length(datStr) ; 
 
+% really quick it would be nice to have a meanfc
+meanfc = zeros(finfo.nnodes) ; 
+for idx = 1:NSUBS
+    meanfc = meanfc + corr(datStr(idx).ts(:,finfo.nnodes)) ; 
+end
+meanfc = meanfc ./ NSUBS ;  
+meanfc = (meanfc + meanfc') ./ 2 ; 
+
 %% parcellation setup
 
 parc.ca = [ cainfo.schaef_str.map2ca('schaefer400_17net') ; ones(55,1).*18 ] ;
