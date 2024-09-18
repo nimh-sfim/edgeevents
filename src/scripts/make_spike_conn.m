@@ -398,6 +398,8 @@ set(gcf,'Position',[100 100 800 500])
 set(gcf,'Color','w')
 orient(gcf,'landscape')
 
+%%
+
 out_figdir = [ './reports/figures/figA/' ] 
 mkdir(out_figdir)
 filename = [out_figdir '/top_longpref_edges.pdf' ] ; 
@@ -518,6 +520,30 @@ filename = [out_figdir '/shortlong_pref_allgrad.pdf' ] ;
 print(filename,'-dpdf','-vector')
 close(gcf)
 
-%%
+%% just some random stuff
 
-
+% res = zeros(199,1200) ; 
+% resfc = zeros(200,1) ; 
+% 
+% for idx = 1:100
+% 
+%     disp(idx)
+% 
+%     tmpfc = corr(datStr(idx).ts) ; 
+%     resfc = resfc + tmpfc(1:200,142) ; 
+% 
+%     tmpets = get_ets(datStr(idx).ts) ; 
+%     res = tmpets(:,get_ets_node_inds([1:200] == 142))' + res ; 
+% 
+% end
+% 
+% resfc = resfc./100 ; 
+% resfc(142) = [] ; 
+% 
+% res = res ./ 100 ; 
+% 
+% dat = ets(:,get_ets_node_inds([1:200] == 142)) ;
+% 
+% [uu,vv] = pca(dat','NumComponents', 1) ; 
+% 
+% figure , imagesc(dat(sortedInd(uu),:)') ; colormap(rdbu) ; clim([-8 8]) ; colorbar

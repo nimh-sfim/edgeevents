@@ -166,4 +166,6 @@ grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii'
 [~,g1sort] = sort(arrayfun(@(i_) mean(grad_cifti(1,parc.ca(1:200)==i_)), 1:17)) ; 
 [~,g2sort] = sort(arrayfun(@(i_) mean(grad_cifti(2,parc.ca(1:200)==i_)), 1:17)) ; 
 
+% example viz
+% imsc_grid_comm(avg_sys_trans.tonst.subset1.long(g1sort,g1sort),1:17,[],[],[],parc.names(g1sort)) ; clim([0 0.1])
 

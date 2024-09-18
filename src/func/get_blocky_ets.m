@@ -16,7 +16,7 @@ nnodes = sqrt(2* nedges+0.25)-0.5+1 ;
 ca_u = ca(u) ;
 ca_v = ca(v) ; 
 
-%% 
+%% run it
 
 bmat_ets = zeros(length(uniqca),length(uniqca),ntp) ; 
 
