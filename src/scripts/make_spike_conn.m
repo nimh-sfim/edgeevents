@@ -8,8 +8,6 @@ close all
 
 run('./config/config_hcp_sch200_1.m') 
 
-%%
-
 SPK_THR = 2.25 ; 
 
 %% now read in spike lengths to make a histogram of lengths
@@ -26,7 +24,7 @@ for sdx = subsets
     
         sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
     
-        filename = [DD.PROC '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
+        filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
         readdat = load(filename,'spike_len_mat') ; 
     
         spike_mats.(sdx{1}){idx} = readdat.spike_len_mat  ; 
@@ -547,3 +545,4 @@ close(gcf)
 % [uu,vv] = pca(dat','NumComponents', 1) ; 
 % 
 % figure , imagesc(dat(sortedInd(uu),:)') ; colormap(rdbu) ; clim([-8 8]) ; colorbar
+

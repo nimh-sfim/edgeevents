@@ -34,7 +34,7 @@ nedges = ( finfo.nnodes * (finfo.nnodes-1) ) / 2 ;
 for sdx = subsets
 
     spike_rsspeaks.(sdx{1}) = cell(length(sublist.(sdx{1})),1) ; 
-
+    spike_rss.(sdx{1}) = cell(length(sublist.(sdx{1})),1) ; 
 
     for idx = 1:length(sublist.(sdx{1}))
     
@@ -60,6 +60,7 @@ for sdx = subsets
             tmppeaks(:,hdx) = ismember(1:finfo.ntp,b) ; 
         end
 
+        spike_rss.(sdx{1}){idx} = tmprss ; 
         spike_rsspeaks.(sdx{1}){idx} = tmppeaks ;  
 
     end
@@ -187,7 +188,6 @@ for sdx = subsets
 
     for pdx = 1:3
   
-    
         ca = spkpttrnclust.(sdx{1}).cons{pdx} ; 
 
         uu = unique(ca) ; 
@@ -210,10 +210,46 @@ for sdx = subsets
     end
 end
 
+%% and analyze all the data we now have
+
+% get centroids of each 
+centhr = 10 ; 
+
+% do a quick ordering of the consensus labels by size
+for sdx = subsets
+        
+    spkpttrnclust.(sdx{1}).cents = cell(3,1)  ; 
+
+    for pdx = 1:3
+ 
+        ca = spkpttrnclust.(sdx{1}).cons2{pdx} ; 
+        tt = tabulate(ca) ; 
+        lookatcents = find(tt(:,2) >= 20) ; 
+        ncents = length(lookatcents) ; 
+        thrcents = cell(ncents,1) ; 
+
+        for idx = 1:ncents % just iterate by idx because they in size order
+    
+            disp([ sdx{1}  ' ' num2str(pdx) ' ' num2str(idx) ])
+
+            % get the patterns that contributed to the community
+            commpat = spkpttrns.(sdx{1}){pdx}(ca == idx,:) ; 
+            % make the square mat
+            thrcents{idx} = mksq(mean(commpat)) ;
+
+        end
+
+        spkpttrnclust.(sdx{1}).cents{pdx} = thrcents ; 
+
+    end
+end
+
 %% now save all of this
 
 filename = [ DD.PROC '/spk_rsspeaksclust_' OUTSTR '.mat' ] ; 
 save(filename,'spkpttrnclust')
 
-%% and analyze all the data we now have
+%% go back to rss time sereis
+
+
 
