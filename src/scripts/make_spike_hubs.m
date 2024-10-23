@@ -86,7 +86,7 @@ g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ;
 remap_nodes = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
 [datplot_ca,datplot_sinds] = sort(remap_nodes) ;  
 datplot_lab_sinds = remaplabs(1:17,g1sort,1:17) ; 
-
+cmap(datplot_lab_sinds,:)
 cmap = get_nice_yeo_cmap('grad1') ; 
 
 clf

@@ -8,9 +8,12 @@ close all
 
 run('./config/config_hcp_sch200_1.m') 
 
-%%
+addpath('/Users/faskowitzji/Documents/MATLAB/conn/')
+addpath('/Users/faskowitzji/Documents/MATLAB/spm12/')
 
 SPK_THR = 2.25 ; 
+
+%%
 
 for idx = 1:NSUBS
 
@@ -83,13 +86,13 @@ for sdx = subsets
 
 end
 
-%% 
-
-% look at the subjects 
-imagesc(spike_prct.subset1.prct(:,fliplr(sortedInd(mean(spike_prct.subset1.prct(95:100,:))))))
+% %% 
+% 
+% % look at the subjects 
+% imagesc(spike_prct.subset1.prct(:,fliplr(sortedInd(mean(spike_prct.subset1.prct(95:100,:))))))
 
 %% find way to naturally bin it
-% look at this
+% look at this for fun, not a super intuitive figure
 
 plot(mean(spike_prct.subset1.prct,2),'LineWidth',2)
 rr = round(mean(spike_prct.subset1.prct,2)) ; 
@@ -104,7 +107,7 @@ end
 hold off
 ylim([0 15])
 
-%%
+%% bin it in a data driven way
 
 maxspk = 100 ; 
 
@@ -120,7 +123,6 @@ high_bin = mi + 1 ; % add 1 because we were aready looking at 2:end
 
 % the low-med-high bins
 lowmedhigh_edges = [ 1 2 high_bin maxspk ] ; 
-% 
 
 %% 
 
@@ -188,255 +190,162 @@ filename = [out_figdir '/spike_hist.pdf' ] ;
 print(filename,'-dpdf','-vector')
 close(gcf)
 
-%% lets look at FC vs spike variability
+%% lets also make a log version of that plot
 
+clf
 
-% plot FC versus variability in lengths
+dd = discretize(spike_lengths.all.subset1,lowmedhigh_edges) ; 
 
-% first get the variability info
+for idx = 1:max(dd)
 
-[u,v] = find(triu(ones(255),1));  
-cortmask =  u<=finfo.nnodes & v<=finfo.nnodes  ;
-
-spike_var = struct() ; 
-for sdx = subsets
-
-    spike_var.(sdx{1}) = zeros(finfo.nnodes) ; 
-
-    for idx = 1:length(sublist.(sdx{1}))
-        disp(idx)
-
-        dat = spike_lengths.(sdx{1}){idx}(cortmask) ; 
-        tmp = mksq(cellfun(@(x_) mad(x_,0),dat)) ; 
-        tmp(isnan(tmp)) = 0 ; 
-            
-        spike_var.(sdx{1}) = tmp + spike_var.(sdx{1}) ; 
-    end
-
-    spike_var.(sdx{1}) = spike_var.(sdx{1}) ./ length(sublist.(sdx{1})) ; 
+    histogram(spike_lengths.all.subset1(dd==idx), 0:1:40,FaceColor=cm(idx,:)) ;
+    % [min(spike_lengths.all.subset1(dd==idx)) max(spike_lengths.all.subset1(dd==idx))]
+    hold on
 
 end
+hold off
+set(gca,'YScale','log')
 
-%%
+endval=40 ;
+xlim([1 endval+0.5])
 
-xdat = tv(meanfc) ; 
-ydat = tv(spike_var.subset1) ; 
+xlabel('spike length (sec)')
+ylabel('count')
 
-tiledlayout(1,2,'TileSpacing','tight')
+xticks((1:endval)+0.5)
+xticklabels(cellstr(num2str((1:endval)'.*finfo.TR)))
+xtickangle(45)
 
-nexttile()
-
-imsc_grid_comm(meanfc,parc.ca(1:200),[],[],[],parc.names(1:17))
-axis square
-cb = colorbar ; 
-cb.Label.String = 'correlation' ; 
-
-
-nt2 = nexttile()
-
-imsc_grid_comm(od_replace(spike_var.subset1,nan),parc.ca(1:200))
-axis square
-
-cb = colorbar ; 
-cb.Label.String = 'spike length variability' ; 
-
-nt2.YAxis.Visible = 'off'
-
-set(gcf,'Position',[100 100 1000 400])
-
+set(gcf,'Position',[100 100 800 800])
 set(gcf,'Color','w')
 
-out_figdir = [ './reports/figures/figB/' ]
+out_figdir = [ './reports/figures/figA/' ]
 mkdir(out_figdir)
-filename = [out_figdir '/spike_mean_var_matrix.pdf' ] ; 
+filename = [out_figdir '/spike_hist_log.pdf' ] ; 
 print(filename,'-dpdf','-vector','-bestfit')
 close(gcf)
 
-%% but also map to cortex
+%% lets do reproducilbility
 
-% MEAN FC
-TL = tiledlayout(2,1)
-nt1 = nexttile()
+clf
 
-fc_degree = mean(meanfc)
+TL1 = tiledlayout(1,3)
 
-pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', fc_degree ,...
-    'valRange',[0 max(abs(fc_degree))],...
-    'cmap',parula, ...
-    'viewcMap',0,'newFig',0,'viewStr','all',...
-    'parenth',TL)
-pp.Layout = nt1.Layout ; 
+for tdx = 1:2
 
-nt2 = nexttile(TL)
+    nexttile(TL1)
+    
+    TL2 = tiledlayout(TL1,2,1,'TileSpacing','none') ;
 
-hh = imagesc(fc_degree) 
-cb = colorbar()
-clim([0 max(abs(fc_degree))])
-hh.Visible = 'off' ;
-hh.Parent.Visible = 'off' ; 
-cb.Location = "north" ; 
-cl = clim() ; 
-cb.Ticks = linspace(cl(1),cl(2),5)
-cb.TickLabels = strtrim(cellstr(num2str(cellfun(@(x_) round(str2num(x_),2) , cb.TickLabels)))) ; 
-cm = colormap() ; 
-colormap(nt2,cm(2:end,:))
+    TL2.Layout.Tile = tdx ; 
+    TL2.Layout.TileSpan = [ 1 1] ;
 
-TL.TileSpacing = 'tight'
+    axis off 
+    ss = {'subset1' 'subset2'} ; 
+    
+    for sdx = 1:2
+        nt = nexttile(TL2) ; 
+        dd = discretize(spike_lengths.all.(ss{sdx}),lowmedhigh_edges) ; 
+        for idx = 1:max(dd)
+        
+            histogram(spike_lengths.all.(ss{sdx})(dd==idx), 0:1:40,FaceColor=cm(idx,:)) ;
+            % [min(spike_lengths.all.subset1(dd==idx)) max(spike_lengths.all.subset1(dd==idx))]
+            hold on
+        
+        end
+        hold off
+    
+        if sdx ==2
+        set(gca, 'ydir', 'reverse')
+            xticks(1:2:40) 
+            xtickangle(45)
+            xx = xticklabels() ; 
+            xticklabels(cellstr(num2str((str2double(xx).*finfo.TR))))
+        else
+            xticklabels([])
+            title('histogram from each subset')
+        end
+    
+        ylabel([ ss{sdx} ])
+    
+        if tdx == 2
+            set(gca,'YScale','log')
 
-set(gcf,'Position',[100 100 600 1000])
+        end
+
+    end
+
+end
+
+% TL2.Title.String = 'histogram counts btwn. subsets'
+
+
+nexttile(TL1)
+
+
+p1 = discretize(spike_lengths.all.subset1,1:40) ; 
+p2 = discretize(spike_lengths.all.subset2,1:40) ; 
+% t1 = tabulate(p1) ; 
+% t2 = tabulate(p2) ; 
+ss = zeros(40,2) ; 
+for idx = 1:40
+   ss(idx,1) = sum(p1==idx) ; 
+   ss(idx,2) = sum(p2==idx) ;
+end
+
+s = scatter(ss(:,1),ss(:,2),30,1:40,'filled') ; 
+set(gca,'YScale','log')
+set(gca,'XScale','log')
+cb = colorbar() ;
+colormap(parula(40))
+cb.Label.String = 'event length' ;
+
+cb.Ticks = [1:5:40] ; 
+ll = str2double(cb.TickLabels()) ; 
+cb.TickLabels = (cellstr(num2str(ll.*finfo.TR))) ;
+
 set(gcf,'Color','w')
 
-out_figdir = [ './reports/figures/figB/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/spike_mean_cortex.pdf' ] ; 
-print(filename,'-dpdf','-bestfit')
-close(gcf)
+xlabel('subset 1')
+ylabel('subset 2')
 
-% FC event VAR
-TL = tiledlayout(2,1)
-nt1 = nexttile()
+refline(1,0)
 
-var_degree = mean(od_replace(spike_var.subset1,nan),'omitnan')
-
-pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', var_degree ,...
-    'valRange',[min(abs(var_degree)) max(abs(var_degree))],...
-    'cmap',parula, ...
-    'viewcMap',0,'newFig',0,'viewStr','all',...
-    'parenth',TL)
-pp.Layout = nt1.Layout ; 
-
-nt2 = nexttile(TL)
-
-hh = imagesc(var_degree) 
-cb = colorbar()
-clim([min(abs(var_degree)) max(abs(var_degree))])
-hh.Visible = 'off' ;
-hh.Parent.Visible = 'off' ; 
-cb.Location = "north" ; 
-cl = clim() ; 
-cb.Ticks = linspace(cl(1),cl(2),5)
-cb.TickLabels = strtrim(cellstr(num2str(cellfun(@(x_) round(str2num(x_),2) , cb.TickLabels)))) ; 
-cm = colormap() ; 
-colormap(nt2,cm(2:end,:))
-
-TL.TileSpacing = 'tight'
-
-set(gcf,'Position',[100 100 600 1000])
-set(gcf,'Color','w')
-
-out_figdir = [ './reports/figures/figB/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/spike_var_cortex.pdf' ] ; 
-print(filename,'-dpdf','-bestfit')
-close(gcf)
+title('bin counts btwn. subsets')
 
 %%
 
-tiledlayout(1,3,'TileSpacing','tight')
-
-
-nexttile()
-
-h = scatter_w_rho(xdat,ydat,30,'filled') ;
-h.MarkerFaceColor = [0.5 0.5 0.5] ;
-h.MarkerFaceAlpha = 0.25 ; 
-h.MarkerEdgeAlpha = 0 ; 
-
-
-axis square
-
-xlabel('FC (correlation)')
-ylabel('spike length variability')
-
-% now colored in
-nt2 = nexttile()
-
-xbins = prctile(xdat,0:2:100) ; 
-
-[zz,xl,mm] = norm_bin_model(xdat,xbins,ydat) ; 
-
-h = scatter_w_rho(xdat,ydat,30,zz,'filled') ; 
-
-cb = colorbar() ;
-clim([-max(abs(zz))  max(abs(zz))])
-cb.Label.String = 'within bin z-score' ;
-xline(xbins) 
-
-hold on
-plot(xl,mm,'square','MarkerSize',6,'LineWidth',1,'Color','cyan')
-hold off
-
-colormap((parula))
-
-axis square
-
-ylabel('spike length variability')
-xlabel('FC (correlation)')
-
-% yticks([])
-%nt2.YAxis.Visible = 'off'
-
-nexttile()
-
-h = scatter_w_rho(xdat,ydat,30,'filled') ;
-h.MarkerFaceColor = [0.5 0.5 0.5] ;
-h.MarkerEdgeAlpha = 0 ; 
-hold on
-
-tt = prctile(zz,95) ; 
-
-h = scatter(xdat(zz>tt),ydat(zz>tt),30,'filled') ;
-h.MarkerFaceColor = [0.2 0.2 0.2] ;
-hold off
-
-xline(xbins) 
-
-axis square
-
-set(gcf,'Position',[100 100 1000 400])
+set(gcf,'Position',[100 100 1000 500])
 set(gcf,'Color','w')
+orient('landscape')
 
-out_figdir = [ './reports/figures/figB/' ]
+out_figdir = [ './reports/figures/figA/' ]
 mkdir(out_figdir)
-filename = [out_figdir '/spike_zz_scatters.pdf' ] ; 
-print(filename,'-dpdf','-bestfit')
+filename = [out_figdir '/spike_hist_subsets.pdf' ] ; 
+print(filename,'-dpdf','-vector','-bestfit')
 close(gcf)
 
-%% plot the relative high var based on the zz meas
 
-TL = tiledlayout(2,1)
-nt1 = nexttile()
+%%
 
-zz_degree = mean(mksq(zz>tt)) ; 
+testmat = zeros(200) ; 
+testmat(1,3) = 1 ;
 
-pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', zz_degree ,...
-    'valRange',[min(abs(zz_degree)) max(abs(zz_degree))],...
-    'cmap',[ 0.5 0.5 0.5 ; parula], ...
-    'viewcMap',0,'newFig',0,'viewStr','all',...
-    'parenth',TL)
-pp.Layout = nt1.Layout ; 
+testmat(1,101) = 1 ;
+testmat(2,50) = 1 ;
 
-nt2 = nexttile(TL)
 
-hh = imagesc(zz_degree) 
-cb = colorbar()
-clim([min(abs(zz_degree)) max(abs(zz_degree))])
-hh.Visible = 'off' ;
-hh.Parent.Visible = 'off' ; 
-cb.Location = "north" ; 
-cl = clim() ; 
-cb.Ticks = linspace(cl(1),cl(2),5)
-cb.TickLabels = strtrim(cellstr(num2str(cellfun(@(x_) round(str2num(x_),2) , cb.TickLabels)))) ; 
-cm = colormap() ; 
-colormap(nt2,cm(2:end,:))
+pp = parula(3) ; 
 
-TL.TileSpacing = 'tight'
+rois.sph_r = ones(200,1); 
+viz_conn_glassbrain(testmat,pp,rois)
 
-set(gcf,'Position',[100 100 600 1000])
-set(gcf,'Color','w')
+%% lets look at the null dataaaa
 
-out_figdir = [ './reports/figures/figB/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/more_spiky_cortex.pdf' ] ; 
-print(filename,'-dpdf','-bestfit')
-close(gcf)
+% filename = [DD.PROC '/surrogate_' OUTSTR '_' , num2str(SPK_THR) , '_spk.mat'] ; 
+% load(filename)
+
+%% power-law ish??
+
+
+

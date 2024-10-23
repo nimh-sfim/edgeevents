@@ -28,77 +28,120 @@ load(filename)
 %% do some stat testing
 
 % load up the nulls
-filename = [DD.PROC '/surrogate_' OUTSTR '_' , num2str(SPK_THR) , '_spkcount.mat'] ; 
+filename = [DD.PROC '/surrogate3_' OUTSTR '_' , num2str(SPK_THR) , '_spkcount.mat'] ; 
 load(filename)
 
 %% boots
 
 nboot = 1000 ; 
 
-surrlong = zeros(finfo.nnodes,finfo.nnodes,nboot) ; 
-
 nsubs = length(sublist.all) ; 
-meansz = length(sublist.subset1) ; 
+subsetsz = length(sublist.subset1) ; 
 
 nperms = length(simmat.keepcov) ; 
+rng(42)
+
+surrA = struct() ;
+surrB = struct() ;
+lennames = {'short' 'inter' 'long'} ; 
+
+% and record for this boot
+for sdx = 1:3
+    surrA.(lennames{sdx}) = zeros(finfo.nnodes,finfo.nnodes,nboot); 
+    surrB.(lennames{sdx}) = zeros(finfo.nnodes,finfo.nnodes,nboot) ; 
+end
+
 for idx = 1:nboot
     
     disp(idx)
 
     % pickout the surr data to average
-    bootinds = randsample(1:nperms,meansz,true) ; 
+    bootinds = randsample(1:nperms,subsetsz,true) ; 
 
-    tmp = zeros(finfo.nnodes) ; 
+    tmpA = zeros(3,finfo.nnodes*(finfo.nnodes-1)/2) ; 
+    tmpB = zeros(3,finfo.nnodes*(finfo.nnodes-1)/2)  ; 
+
     for bdx = bootinds 
 
-        ll = simmat.randcov{bdx}(3,:) ; 
-        tmp = tmp + mksq(ll) ; 
+        aa = arrayfun(@(i_)simmat.nocov{bdx}(i_,:),1:3,'UniformOutput',false) ; 
+        bb = arrayfun(@(i_)simmat.keepcov{bdx}(i_,:),1:3,'UniformOutput',false) ; 
+
+        for sdx = 1:3
+            tmpA(sdx,:) = tmpA(sdx,:) + aa{sdx}  ; 
+            tmpB(sdx,:) = tmpB(sdx,:) + bb{sdx}  ; 
+        end
+
     end
     
-    surrlong(:,:,idx) = tmp./meansz ; 
-    % surrlong(:,:,idx) = (tmp>prctile(tv(tmp),95)) ; 
+    % make mean
+    for sdx = 1:3
+        tmpA(sdx,:) = tmpA(sdx,:) ./ subsetsz  ; 
+        tmpB(sdx,:) = tmpB(sdx,:) ./ subsetsz  ; 
+    end
 
+    % and record for this boot
+    for sdx = 1:3
+        surrA.(lennames{sdx})(:,:,idx) = mksq(tmpA(sdx,:)) ; 
+        surrB.(lennames{sdx})(:,:,idx) = mksq(tmpB(sdx,:)) ; 
+    end
 
 end
 
-%% sig test
+%%
 
-% lowsim = prctile(surrlong,1,3) ; 
-highsim = prctile(surrlong,99,3) ; 
+sigmoreA = struct() ; 
+sigmoreB = struct() ; 
 
-sig_longedges = spike_conn.subset1.long>highsim ; 
+siglessA = struct() ; 
+siglessB = struct() ; 
 
-%% 
+for sdx = 1:3
 
-dat = tv(spike_conn.subset1.long) ; 
+    sigmoreA.(lennames{sdx}) = spike_conn.subset1.(lennames{sdx}) >= ...
+        prctile(surrA.(lennames{sdx}),99.9,3) ; 
+    sigmoreB.(lennames{sdx}) = spike_conn.subset1.(lennames{sdx}) >= ...
+        prctile(surrB.(lennames{sdx}),99.9,3) ; 
 
-TL = tiledlayout(1,2)
+    siglessA.(lennames{sdx}) = spike_conn.subset1.(lennames{sdx}) <= ...
+        prctile(surrA.(lennames{sdx}),0.1,3) ; 
+    siglessB.(lennames{sdx}) = spike_conn.subset1.(lennames{sdx}) <= ...
+        prctile(surrB.(lennames{sdx}),0.1,3) ; 
+
+end
+
+
+%% sig test 
+
+CM = flipud(tempo(100)) ; 
+
+TL = tiledlayout(1,3)
 
 nt = nexttile()
 
-longedge_thr = min(spike_conn.subset1.long(sig_longedges)) ; % prctile(dat,95) ; 
-ll = linspace(0,longedge_thr,20) ; 
-ss = ll(2) ; 
-
-hh = histogram(dat,'BinEdges', ll ,FaceColor=[0.8 0.8 0.8],...
-    Normalization='count')
-hold on
-histogram(dat(dat>=longedge_thr),'FaceColor',[0.2 0.2 0.2],...
-    'BinEdges',ll(end):ss:max(dat),...
-    Normalization='count')
-
-ylabel('count')
-xlabel('avg. num. long')
-
-xx = xticks() ; 
-xticklabels(cellstr(num2str(round(xx.*finfo.TR,2)')))
-
-line([ longedge_thr longedge_thr ], [0 1750] ,'Color','red')
-text(longedge_thr,2000, ...
-    [ { 'surrogate' ['thr: ' num2str(round(longedge_thr*finfo.TR,2)) ] } ],...
-    'HorizontalAlignment','center')
-
-axis square
+% from a different approach
+%
+% longedge_thr = min(spike_conn.subset1.long(sig_longedges)) ; % prctile(dat,95) ; 
+% ll = linspace(0,longedge_thr,20) ; 
+% ss = ll(2) ; 
+% 
+% hh = histogram(dat,'BinEdges', ll ,FaceColor=[0.8 0.8 0.8],...
+%     Normalization='count')
+% hold on
+% histogram(dat(dat>=longedge_thr),'FaceColor',[0.2 0.2 0.2],...
+%     'BinEdges',ll(end):ss:max(dat),...
+%     Normalization='count')
+% 
+% ylabel('count')
+% xlabel('avg. num. long')
+% xx = xticks() ; 
+% xticklabels(cellstr(num2str(round(xx.*finfo.TR,2)')))
+% 
+% line([ longedge_thr longedge_thr ], [0 1750] ,'Color','red')
+% text(longedge_thr,2000, ...
+%     [ { 'surrogate-based' ['thr: ' num2str(round(longedge_thr*finfo.TR,2)) ] } ],...
+%     'HorizontalAlignment','center')
+% 
+% axis square
 
 % aa = axes('Parent',gcf,'Position',[.48 .5 .4 .38],'Units','normalized')
 % ss = scatter((dat1),(dat2),10,tld>3,"filled") ; 
@@ -108,24 +151,51 @@ axis square
 % rl.LineWidth = 2 ;
 % colormap(inferno(2))
 
-nt1 = nexttile() 
+imsc_grid_comm(sigmoreA.long.*spike_conn.subset1.long,parc.ca(1:200),1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(1:17))
+axis square
 
-longest_edges = dat >= longedge_thr ; 
+xticks([])
+cb = colorbar() ; 
+cb.Label.String = 'average event count' ; 
+colormap([ 1 1 1 ; CM])
+tmp = cb.TickLabels ; 
+cb.TickLabels = { 'non sig.' tmp{2:end} } ; 
 
-bb = get_blocky(mksq(longest_edges),parc.ca(1:200))
+
+nt2 = nexttile() ;
+
+%longest_edges = dat >= longedge_thr ; 
+
+bb = get_blocky(sigmoreA.long,parc.ca(1:200))
 imsc_grid_comm(bb,1:17,...
     1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(1:17))
 set(gca,'TickLength',[ 0 0])
-colorbar
+cb = colorbar()
+cb.Label.String = 'density' ; 
 xticks([]) 
 
 xlabel('btwn system density')
 
 axis square
 
-colormap(nt1,[ 1 1 1 ; flipud(inferno(100))])
+colormap(nt2,[ 1 1 1 ; flipud(tempo(100))])
 
-set(gcf,'Position',[100 100 600 400])
+nexttile()
+
+histogram(nonzeros(tv(sigmoreA.long.*spike_conn.subset1.long)),...
+    'Normalization','probability','FaceColor',CM(80,:),'EdgeAlpha',0)
+hold on
+histogram(nonzeros(tv(~sigmoreA.long.*spike_conn.subset1.long)),...
+    'Normalization','probability','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0)
+
+legend({'sig. edges' 'non-sig. edges'})
+
+xlabel('average event length')
+ylabel('prob.')
+
+axis square
+
+set(gcf,'Position',[100 100 1200 600])
 
 %% 
 
@@ -134,30 +204,12 @@ set(gcf,'Color','w')
 out_figdir = [ './reports/figures/figC/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/longest_spike_hist.pdf' ] ; 
-print(filename,'-dpdf','-vector')
+print(filename,'-dpdf','-bestfit')
 close(gcf)
 
 
-
-%%
-
-% nt2 = nexttile() 
-% 
-% pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', sum(mksq(longest_edges)) ,...
-%     'valRange',[0 10],...
-%     'cmap',[ 1 1 1 ; flipud(inferno(100))], ...
-%     'viewcMap',0,'newFig',0,'viewStr','all',...
-%     'parenth',TL)
-% pp.Layout = nt2.Layout ; 
-
-
-%%
-
-addpath('/Users/faskowitzji/Documents/MATLAB/spm12/')
-addpath('/Users/faskowitzji/Documents/MATLAB/conn/')
-
-%% 
-
+%% glassbrain
+ 
 cbig_dir = '/Users/faskowitzji/joshstuff/git_pull/CBIG/' ; 
 schaefer_dir = 'stable_projects/brain_parcellation/Schaefer2018_LocalGlobal' ; 
 
@@ -178,11 +230,27 @@ rois = struct ;
 rois.sph_xyz = [ cc_L(2:end,:) ; cc_R(2:end,:) ] ; 
 rois.sph_c = [ tt_L.table(2:end,1:3) ; tt_R.table(2:end,1:3) ] ./ 255 ; 
 
-rois.sph_r = normalize(sum(mksq(longest_edges)), 'range',[1,5]) ; 
-
 %%
 
-viz_conn_glassbrain(mksq(longest_edges),[ 0.5 .5 .5],rois)
+% too many edges for plot
+% rois.sph_r = normalize(sum(sigmoreA.long), 'range',[1,3]) ; 
+% viz_conn_glassbrain(sigmoreA.long,[ 0.5 .5 .5],rois)
+% 
+% out_figdir = [ './reports/figures/figC/' ]
+% mkdir(out_figdir)
+% filename = [out_figdir '/longest_spike_glassbrain.png' ] ; 
+% h('print',3,filename,'-nogui')
+% close(gcf)
+
+parc_plot_wcolorbar(sum(sigmoreA.long),surfss,annotm,...
+    [0 max(abs(sum(sigmoreA.long)))],CM,[100 100 600 1000])
+
+out_figdir = [ './reports/figures/figC/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/longsig_cortex.pdf' ] ; 
+print(filename,'-dpdf','-bestfit')
+close(gcf)
+
 
 % 
 % set(gcf,'Position',[100 100 600 400])
@@ -191,3 +259,61 @@ viz_conn_glassbrain(mksq(longest_edges),[ 0.5 .5 .5],rois)
 % 
 % set(gcf,'Color','w')
 
+%% also make the plot with the surrogate data that keeps cov
+
+
+thrs = [50 95 99.9] ; 
+
+tiledlayout(2,3)
+
+for idx = 1:3
+    nexttile()
+
+    scatter(tv(spike_conn.subset1.long),tv(prctile(surrA.long,thrs(idx),3)),...
+        'filled')
+    
+    axis square
+
+    refline(1,0)
+
+    if idx == 1
+        ylabel({'randomized covariance' 'surrogate long event count'})
+    end
+
+
+    title(['surrogate percentile : ' num2str(thrs(idx))])
+
+end
+
+
+for idx = 1:3
+    nexttile()
+
+    scatter(tv(spike_conn.subset1.long),tv(prctile(surrB.long,thrs(idx),3)),...
+        'filled')
+    
+    axis square
+
+    refline(1,0)
+
+    if idx == 1
+        ylabel({'retained covariance' 'surrogate long event count'})
+    end
+
+    if idx == 2
+        xlabel('empirical long event count')
+    end
+
+end
+
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+set(gcf,'Position',[100 100 800 600])
+
+%%
+
+out_figdir = [ './reports/figures/figC/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/longest_keepcov_scatters.pdf' ] ; 
+print(filename,'-dpdf','-vector','-bestfit')
+close(gcf)

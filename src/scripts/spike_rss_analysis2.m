@@ -42,7 +42,7 @@ for sdx = subsets
     
         sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
     
-        filename = [DD.PROC '/' imglob '/' datStr(idx).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
+        filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
         readdat = load(filename,'spike_len_mat') ; 
     
         ets = get_ets(datStr(sind).ts) ; 

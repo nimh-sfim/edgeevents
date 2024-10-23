@@ -15,34 +15,7 @@ maxspk = 100 ;
 high_bin = 4 ; 
 lowmedhigh_edges = [ 1 2 high_bin maxspk ] ; 
 
-%% read in all the spikes
-
 subsets = {'subset1' 'subset2'} ; 
-
-% for sdx = subsets
-% 
-%     spike_lengths.(sdx{1}) = cell(length(sublist.(sdx{1})),1) ; 
-% 
-%     for idx = 1:length(sublist.(sdx{1}))
-% 
-%         disp(idx)
-% 
-%         sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
-% 
-%         filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
-%         readdat = load(filename,'spike_len_cell') ; 
-% 
-%         spike_lengths.(sdx{1}){idx} = readdat.spike_len_cell  ; 
-% 
-%     end
-% 
-% end
-% 
-% for sdx = subsets
-%     tmp = cell2mat(arrayfun(@(i_) int32(cell2mat(spike_lengths.(sdx{1}){i_}')),1:length(spike_lengths.(sdx{1}))','UniformOutput',false)') ;
-%     % get rid of 0 lengths
-%     spike_lengths.all.(sdx{1}) = nonzeros(tmp) ; 
-% end
 
 %%
 
@@ -156,3 +129,83 @@ save(filename,'simrss*','-v7.3')
 
 
 %%
+
+
+filename = [DD.PROC '/surrogate_' OUTSTR '_' , num2str(SPK_THR) , '_spk.mat'] ; 
+load(filename)
+
+
+% and load the subs
+subsets = {'subset1' 'subset2'} ; 
+
+for sdx = subsets
+
+    spike_lengths.(sdx{1}) = cell(length(sublist.(sdx{1})),1) ; 
+    
+    for idx = 1:length(sublist.(sdx{1}))
+    
+        disp(idx)
+    
+        sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
+    
+        filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
+        readdat = load(filename,'spike_len_cell') ; 
+    
+        spike_lengths.(sdx{1}){idx} = readdat.spike_len_cell  ; 
+    
+    end
+
+end
+
+for sdx = subsets
+    tmp = cell2mat(arrayfun(@(i_) int32(cell2mat(spike_lengths.(sdx{1}){i_}')),1:length(spike_lengths.(sdx{1}))','UniformOutput',false)') ;
+    % get rid of 0 lengths
+    spike_lengths.all.(sdx{1}) = nonzeros(tmp) ; 
+end
+
+%%
+
+tiledlayout(1,2)
+
+histogram(spike_lengths.all.subset1,'Normalization','probability')
+hold on
+histogram(nonzeros(cell2mat(simlens.nocov)),'Normalization','probability')
+hold off
+set(gca,'YScale','log')
+
+%%
+
+refhist = countcount_openend(spike_lengths.all.subset1,1:20) ; 
+nboot = 500 ;
+
+bootskew = struct() ; 
+bootdistdiff = struct() ; 
+
+rng(42)
+for randtype = {'nocov' 'randcov' 'keepcov'}
+    ske
+    
+    bootskew.(randtype{1}) = zeros(nboot,1) ; 
+    bootdistdiff.(randtype{1}) = zeros(nboot,20) ; 
+    
+    
+    for idx = 1:nboot
+    
+        disp([ randtype{1} num2str(idx)])
+    
+        bootind = randsample(1:nperms,176,true) ; 
+        boothist = cell2mat(simlens.(randtype{1})(bootind)) ;
+    
+        bootskew.(randtype{1})(idx) = skewness(single(boothist)) ; 
+        bootdistdiff.(randtype{1})(idx,:) = refhist - countcount_openend(boothist,1:20) ; 
+        
+    end
+
+end
+
+%%
+
+
+filename = [DD.PROC '/surrogate_' OUTSTR '_' , num2str(SPK_THR) , '_boothist.mat'] ; 
+save(filename,'bootskew','bootdistdiff')
+
