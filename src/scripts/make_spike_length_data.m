@@ -346,6 +346,55 @@ viz_conn_glassbrain(testmat,pp,rois)
 % load(filename)
 
 %% power-law ish??
+% 
+% histogram(cell2mat(spike_lengths.subset1{10}'))
+% 
+% tmp = cell2mat(spike_lengths.subset1{10}' );
+% x = (1:max(tmp))' ;
+% y = countcount(tmp,1:max(tmp)) ; 
 
+%% power-law stuff
+% had to edit the functions to make em' work
 
+[alpha1, xmin1, L1] = plfit(spike_lengths.all.subset1) ; 
+[alpha2, xmin2, L2] = plfit(spike_lengths.all.subset2) ; 
 
+% confirm that these 'pvalues' are above 0.2
+[p1,gof1] = plpva(spike_lengths.all.subset1,xmin1,'reps',10) ; 
+[p2,gof2] = plpva(spike_lengths.all.subset2,xmin2,'reps',10) ; 
+
+%% plot
+
+tiledlayout(1,2)
+
+nexttile()
+
+h = plplot(spike_lengths.all.subset1,xmin1,alpha1) ; 
+
+xlabel({'event lengths (sec)'})
+legend({'' ['power fit, xmin: ' num2str(xmin)] },'Location','southwest')
+xticklabels({'0' num2str(10*finfo.TR) num2str((10^2)*finfo.TR) }) ; 
+
+title('subset 1')
+
+nexttile()
+
+h = plplot(spike_lengths.all.subset2,xmin2,alpha2) ; 
+
+xlabel({'event lengths (sec)'})
+legend({'' ['power fit, xmin: ' num2str(xmin)] },'Location','southwest')
+xticklabels({'0' num2str(10*finfo.TR) num2str((10^2)*finfo.TR) }) ; 
+
+title('subset 2')
+
+set(gcf,'Position',[100 100 800 400])
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+
+%%
+
+out_figdir = [ './reports/figures/figA/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/power_law.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)

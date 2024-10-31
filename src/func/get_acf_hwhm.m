@@ -1,4 +1,5 @@
 function [acfs,acs_twosided] = get_acf_hwhm(inTs,inTr,nLags) 
+% inTs = time x channels
 
 if nargin < 2
     error('need 2 args')

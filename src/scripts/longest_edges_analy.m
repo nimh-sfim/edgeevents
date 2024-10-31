@@ -160,7 +160,8 @@ cb.Label.String = 'average event count' ;
 colormap([ 1 1 1 ; CM])
 tmp = cb.TickLabels ; 
 cb.TickLabels = { 'non sig.' tmp{2:end} } ; 
-
+cc = clim() ;  
+clim(cc) ;
 
 nt2 = nexttile() ;
 
@@ -168,13 +169,14 @@ nt2 = nexttile() ;
 
 bb = get_blocky(sigmoreA.long,parc.ca(1:200))
 imsc_grid_comm(bb,1:17,...
-    1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(1:17))
+    1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],[])
 set(gca,'TickLength',[ 0 0])
 cb = colorbar()
-cb.Label.String = 'density' ; 
+cb.Label.String = 'density of sig. edges' ; 
 xticks([]) 
+yticks([])
 
-xlabel('btwn system density')
+% xlabel('btwn system density')
 
 axis square
 
@@ -188,23 +190,24 @@ hold on
 histogram(nonzeros(tv(~sigmoreA.long.*spike_conn.subset1.long)),...
     'Normalization','probability','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0)
 
-legend({'sig. edges' 'non-sig. edges'})
+legend({'sig. edges' 'non-sig. edges'},'Location','northeastoutside')
 
 xlabel('average event length')
 ylabel('prob.')
 
 axis square
 
-set(gcf,'Position',[100 100 1200 600])
+set(gcf,'Position',[100 100 1000 400])
 
 %% 
 
 set(gcf,'Color','w')
+orient(gcf,'landscape')
 
 out_figdir = [ './reports/figures/figC/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/longest_spike_hist.pdf' ] ; 
-print(filename,'-dpdf','-bestfit')
+print(filename,'-dpdf')
 close(gcf)
 
 
@@ -317,3 +320,142 @@ mkdir(out_figdir)
 filename = [out_figdir '/longest_keepcov_scatters.pdf' ] ; 
 print(filename,'-dpdf','-vector','-bestfit')
 close(gcf)
+
+%% use the long edges for identifiability
+
+scannames = {'REST1_LR' 'REST1_RL'} ; 
+
+fmridat = struct() ; 
+for idx = scannames
+    fmridat.(idx{1}) = load_hcp_alldata(...
+        [ DD.INTERM '/hcp352_nusregts_FIX2phys_schaefer200/' ],...
+        'schaefer200-yeo17',...
+        sublist.subset1, ...
+        ['*' idx{1} '*']) ; 
+end
+
+%%
+res.long = zeros(length(sublist.subset1),1) ; 
+res.notlong = zeros(length(sublist.subset1),1) ; 
+
+ident.long = zeros(length(sublist.subset1)) ; 
+ident.notlong = zeros(length(sublist.subset1)) ; 
+
+for idx = 1:length(sublist.subset1)
+
+    disp(idx)
+
+    sub = sublist.subset1{idx} ; 
+
+    c1 = corr(fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes)) ; 
+    c2 = corr(fmridat.REST1_LR(idx).ts(:,1:finfo.nnodes)) ; 
+
+    res.long(idx) = corr(c1(triu(sigmoreA.long,1)),c2(triu(sigmoreA.long,1)),'type','s') ; 
+    res.notlong(idx) = corr(c1(triu(~sigmoreA.long,1)),c2(triu(~sigmoreA.long,1)),'type','s') ; 
+
+    % res.long(idx) = IPN_ccc([ c1(triu(sigmoreA.long,1)) c2(triu(sigmoreA.long,1)) ]) ; 
+    % res.notlong(idx) = IPN_ccc([ c1(triu(~sigmoreA.long,1)) c2(triu(~sigmoreA.long,1)) ]) ; 
+
+end
+
+for idx = 1:length(sublist.subset1)
+    disp(idx)
+    c1 = corr(fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes)) ; 
+
+    for jdx = 1:length(sublist.subset1)
+        c2 = corr(fmridat.REST1_LR(jdx).ts(:,1:finfo.nnodes)) ; 
+
+        ident.long(idx,jdx) = corr(c1(triu(sigmoreA.long,1)),c2(triu(sigmoreA.long,1)),'type','s') ; 
+        ident.notlong(idx,jdx) = corr(c1(triu(~sigmoreA.long,1)),c2(triu(~sigmoreA.long,1)),'type','s') ; 
+    end
+end
+
+% [~,mi1] = max(ident.long,[],2) ; 
+% [~,mi2] = max(ident.notlong,[],2) ; 
+
+[~,ss1] = sort(ident.long,2,'descend') ; 
+identpos1 = arrayfun(@(i_) find(ss1(i_,:)==i_),1:size(ss,1)) ; 
+
+[~,ss2] = sort(ident.notlong,2,'descend') ; 
+identpos2 = arrayfun(@(i_) find(ss2(i_,:)==i_),1:size(ss,1)) ; 
+
+dat = [ res.long,res.notlong ] ; 
+[~,~,tt_ci,tt_stats] = ttest(dat(:,1),dat(:,2)) ; 
+
+nperms = 1e4 ; 
+permt = nan(nperms,1) ; 
+rng(42)
+for idx = 1:nperms
+    dd = dat .* 1; 
+    rr = randperm(176) ; 
+    dd(rr(1:88),:) = fliplr(dd(rr(1:88),:)) ; 
+    [~,~,~,ss] = ttest(dd(:,1),dd(:,2)) ; 
+    permt(idx) = ss.tstat ; 
+end
+
+[rr_p,~,rr_stats] = ranksum(identpos1,identpos2) ;
+
+%% 
+
+tiledlayout(1,3)
+
+nexttile()
+
+imsc_grid_comm(sigmoreA.long,parc.ca(1:200),1,[0.5 0.5 0.5 ],[0.5 0.5 0.5 ],[])
+axis square
+colormap([ [0.8 0.8 0.8 ] ; CM(30,:) ])
+xticks([])
+yticks([])
+
+ne = finfo.nnodes * (finfo.nnodes-1) / 2 ; 
+legend({ ...
+    ['sig. long (' num2str(round(sum(tv(sigmoreA.long))./ne*100,0)) '% edges) '] ...
+    ['non-sig. long (' num2str(round(sum(tv(~sigmoreA.long))./ne*100,0)) '% edges)']}, ...
+    'Location','southoutside')
+
+nexttile()
+
+h = histogram(res.long) ;
+h.EdgeAlpha = 0 ; 
+h.FaceColor = CM(30,:) ; 
+h.FaceAlpha = 0.5 ; 
+xline(mean(res.long),'Color',CM(30,:),'LineWidth',3)
+
+hold on
+h = histogram(res.notlong) ;
+h.EdgeAlpha = 0 ; 
+h.FaceColor = [0.8 0.8 0.8 ] ; 
+h.FaceAlpha = 0.5 ; 
+xline(mean(res.notlong),'Color',[.8 .8 .8],'LineWidth',3)
+
+xlabel('test-retest correlation')
+ylabel('count')
+
+hold off
+
+axis square
+
+nexttile()
+
+h,hh = fcn_boxpts([identpos1 identpos2]',...
+    [ ones(176,1) ; ones(176,1)+1 ],[CM(30,:) ; [.8 .8 .8] ],...
+    1,{'sig. long' 'non-sig. long'})
+set(gca, 'YDir','reverse')
+
+axis square
+
+ylabel('identifiability rank')
+
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+set(gcf,'Position',[100 100 800 600])
+
+%%
+
+out_figdir = [ './reports/figures/figC/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/longest_vs_nonlongest_stats.pdf' ] ; 
+print(filename,'-dpdf','-vector','-bestfit')
+close(gcf)
+
+

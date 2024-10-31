@@ -139,3 +139,42 @@ mkdir(out_figdir)
 filename = [out_figdir '/example_surface.png' ] ; 
 print(filename,'-dpng')
 close(gcf)
+
+%%
+
+
+idx = 42 ; 
+ts = datStr(idx).ts(:,1:200) ; 
+ets = get_ets(ts) ; 
+fc = corr(ts) ; 
+
+[u,v] = find(triu(ones(200),1)) ; 
+
+timevec = 1:150 ; 
+trvec = timevec.*0.72 ; 
+
+%%
+
+miniets = flipud(ets(timevec,442:452))+((1:11)) ; 
+
+for ss = 1:size(dat,2)
+    % plot(-42:1:42,dat(:,idx),'LineWidth',2)
+    x = (-42:1:42) ; 
+    y = dat(:,ss)' ; 
+    z = zeros(size(dat(:,ss)))' ; 
+    c = gradient(dat(:,ss))' ; 
+    surface([x;x],[y;y],[z;z],[c;c],...
+        'FaceColor','no','EdgeColor','interp','LineWidth',2,'EdgeAlpha',0.2)
+    hold on
+end
+
+for idx = 1:11
+    plot(miniets(:,idx))
+    hold on
+   
+    ab = miniets(:,idx)>(2.25+idx) ; 
+    timevec = nan(150,1) ; 
+    timevec(ab) = find(ab) ; 
+    plot(timevec,)
+
+end

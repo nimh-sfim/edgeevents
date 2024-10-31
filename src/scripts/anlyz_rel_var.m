@@ -61,7 +61,7 @@ axis square
 cb = colorbar ; 
 cb.Label.String = 'correlation' ; 
 xticks([])
-colormap(nt1,fblue(100))
+colormap(nt1,gray(100))
 
 nt2 = nexttile() ; 
 
@@ -74,7 +74,7 @@ cb.Label.String = 'spike length variability' ;
 nt2.YAxis.Visible = 'off'
 xticks([])
 
-colormap(nt2,fblue(100))
+colormap(nt2,gray(100))
 
 set(gcf,'Position',[100 100 1000 400])
 set(gcf,'Color','w')
@@ -120,6 +120,40 @@ xbins = prctile(xdat,0:5:100) ; % just use simple percentiles, all bins have
                                 % same numeber of edges
 
 [eVar,xbinmid,binmean] = norm_bin_model(xdat,xbins,ydat) ; 
+
+%% lets to a lil testing on the plot
+
+grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii')) ; 
+perminds = load('./data/external/schaefer-yeo7_200node_permuted_inds.mat') ; 
+
+
+eVarMat = mksq(eVar) ; 
+bb = get_blocky(eVarMat,parc.ca(1:200)) ; 
+nperm = 1e4 ; 
+nblocks = size(bb,1) ; 
+permbb = nan(nblocks,nblocks,nperm) ; 
+rng(42)
+for idx = 1:nperm
+    if ~mod(idx,1000) ; disp([num2str(idx/nperm*100) '%' ]) ; end
+    ii = perminds.PERMS(:,randi(5e4)) ; 
+    permbb(:,:,idx) = get_blocky(eVarMat(ii,ii),parc.ca(1:200)) ; 
+end
+
+phigh = sum(bb<=permbb,3)./nperm ; 
+plow = sum(bb>=permbb,3)./nperm ;
+
+%%
+
+mmask = logical(triu(ones(17),0)) ; 
+
+tmp = fdr_bh(phigh(mmask),0.05) ; 
+sighigh_eVar_blocks = zeros(17) ; 
+sighigh_eVar_blocks(mmask) = tmp ; 
+
+tmp = fdr_bh(plow(mmask),0.05) ; 
+siglow_eVar_blocks = zeros(17) ; 
+siglow_eVar_blocks(mmask) = tmp ; 
+
 
 %%
 
@@ -201,7 +235,7 @@ close(gcf)
 
 %% plot matrix of zscore var vals + yeo communities 
 
-TL = tiledlayout(1,2)
+TL = tiledlayout(1,3,'TileSpacing','tight')
 
 nexttile(TL)
 
@@ -217,7 +251,7 @@ xticks([])
 
 nexttile(TL)
 
-imsc_grid_comm(get_blocky(mksq(eVar),parc.ca(1:finfo.nnodes)),1:17,[],[1 1 1],1,parc.names(1:17))
+imsc_grid_comm(get_blocky(mksq(eVar),parc.ca(1:finfo.nnodes)),1:17,[],[1 1 1],1,[])
 axis square
 colormap(CM)
 clim([-max(abs(eVar))  max(abs(eVar))])
@@ -227,7 +261,36 @@ cb.Label.String = 'within bin z-score' ;
 
 xticks([])
 
-set(gcf,'Position',[100 100 1200 800])
+nexttile(TL)
+
+h = imsc_grid_comm(get_blocky(mksq(eVar) ,parc.ca(1:finfo.nnodes)),...
+    1:17,0.5,[.8 .8 .8],[0.8 .8 .8],[]) ;
+h.AlphaData = sighigh_eVar_blocks + siglow_eVar_blocks' ; 
+axis square
+colormap(CM)
+clim([-max(abs(eVar))  max(abs(eVar))])
+% cb = colorbar() ;
+% clim([-max(abs(eVar))  max(abs(eVar))])
+% cb.Label.String = 'within bin z-score' ;
+
+[uu,vv] = find(sighigh_eVar_blocks) ; 
+for idx = 1:length(uu)
+    hold on
+    imsc_addsquare(1:17==uu(idx),1:17==vv(idx),0,CM( floor(size(CM,1)*0.8),:))
+end
+hold off
+
+[uu,vv] = find(siglow_eVar_blocks') ; 
+for idx = 1:length(uu)
+    hold on
+    imsc_addsquare(1:17==uu(idx),1:17==vv(idx),0,CM( floor(size(CM,1)*0.2),:))
+end
+hold off
+
+xticks([])
+yticks([])
+
+set(gcf,'Position',[100 100 1400 1000])
 set(gcf,'Color','w')
 orient(gcf,'landscape')
 
@@ -237,7 +300,7 @@ out_figdir = [ './reports/figures/figB/' ]
 orient(gcf,'landscape')
 mkdir(out_figdir)
 filename = [out_figdir '/spike_zz_mat.pdf' ] ; 
-print(filename,'-dpdf','-fillpage')
+print(filename,'-dpdf','-bestfit')
 close(gcf)
 
 %% 
@@ -453,3 +516,10 @@ for idx = 1:3
 
 end
 
+%%
+
+
+    be = binedges(2,:) ; 
+
+    edgesinbin = fcvec>=be(1) & fcvec<be(2) ; 
+    

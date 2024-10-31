@@ -109,3 +109,6 @@ bin/
 *DS_Store
 *pdf
 *png
+*err
+*jpg
+*bk

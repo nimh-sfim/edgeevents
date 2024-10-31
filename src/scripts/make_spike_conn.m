@@ -93,6 +93,8 @@ TL.TileSpacing = 'compact';
 
 spkken_names_long =  {'short' 'intermediate' 'long'} ; 
 
+CM = flipud(gnbu(100)) ; 
+
 for idx = 1:3
 
     nexttile()
@@ -115,8 +117,6 @@ for idx = 1:3
     xticklabels('')
 
     title(spkken_names_long{idx})
-
-    colormap(flipud(inferno()))
 
     if idx == 3
         cb = colorbar() ; 
@@ -143,14 +143,13 @@ for idx = 1:3
 
     end
     
-    clim([0 8])
+    clim([0 6])
 
     axis square
     xticks(1:17)
     xticklabels(cellstr(num2str((1:17)')))
     
-    % colormap(flipud(inferno()))
-    colormap(flipud(viridis()))
+    colormap(CM)
 
 
     if idx == 3
@@ -173,13 +172,41 @@ filename = [out_figdir '/spike_mats_separated.pdf' ] ;
 print(filename,'-dpdf','-vector')
 close(gcf)
 
+%%
+
+CM = flipud(gnbu(100)) ; 
+
+for idx = 1:3
+
+    % [dat,~] = pca(spike_conn.subset1.(spklen_names{idx}),'NumComponents',1) ; 
+    %[dat,~] = svds(spike_conn.subset1.(spklen_names{idx}),1) ;
+    % dat = sum(spike_conn.subset1.(spklen_names{idx})) ; 
+    dat = eigenvector_centrality_und(spike_conn.subset1.(spklen_names{idx})) ; 
+
+    parc_plot_wcolorbar(dat,surfss,annotm,...
+        [min(dat) max(dat)],CM,[100 100 600 1000])
+
+    set(gcf,'Color','w')
+
+    
+    out_figdir = [ './reports/figures/figA/' ]
+    mkdir(out_figdir)
+    filename = [out_figdir '/spike_cortex_' spklen_names{idx} '.png' ] ; 
+    print(filename,'-dpng')
+    close(gcf)
+
+end
+
 %% for supp
 
-TL = tiledlayout(2,3)
+TL = tiledlayout(3,3)
 TL.TileSpacing = 'compact'; 
 
 spklen_names = {'short' 'inter' 'long'} ; 
 spkken_names_long =  {'short' 'intermediate' 'long'} ; 
+
+CM = flipud(gnbu(100)) ; 
+
 
 for idx = 1:3
 
@@ -202,7 +229,7 @@ for idx = 1:3
 
     title(spkken_names_long{idx})
 
-    colormap(flipud(inferno()))
+    colormap(CM)
 
     if idx == 3
         cb = colorbar() ; 
@@ -238,285 +265,309 @@ for idx = 1:3
     end
 end
 
-%%
+for idx = 1:3
+    
+    nexttile()
 
-set(gcf,'Position',[100 100 800 500])
+    name1 = spkken_names_long{idx} ; 
+
+    dat1 = spike_conn.subset1.(spklen_names{idx}) ; 
+    dat2 = spike_conn.subset2.(spklen_names{idx}) ; 
+
+    ss = scatter(tv(dat1),tv(dat2),"filled",'MarkerEdgeColor','none',...
+        'MarkerFaceColor',[0.8 0.8 0.8]) ; 
+    rho = corr(tv(dat1),tv(dat2),'Type','Spearman') ; 
+    text(0.05,0.9,['rho: ' num2str(round(rho,2))],...
+        'Units','normalized')
+
+    title(name1) 
+    xlabel('subset 1')
+    ylabel('subset 2')
+
+    rl = refline(1,0)
+    rl.LineWidth = 2 ;
+
+end
+
+set(gcf,'Position',[100 100 1200 1000])
 
 set(gcf,'Color','w')
 orient(gcf,'landscape')
+
+%%
 
 out_figdir = [ './reports/figures/figA/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/spike_mats_rank_n_scatter.pdf' ] ; 
-print(filename,'-dpdf','-vector')
+print(filename,'-dpdf','-vector','-bestfit')
 close(gcf)
 
-%% compare the short and long spike spaces
-
-TL = tiledlayout(1,2)
-
-nexttile()
-
-long_degree = sum(spike_conn.subset1.long) ; 
-short_degree = sum(spike_conn.subset1.short) ; 
-
-tr_degree = [tiedrank(long_degree(:))  tiedrank(short_degree(:)) ] ; 
-[~,ii] = max(tr_degree,[],2) ; 
-
-dtl_degree = arrayfun(@(i_) point_to_line([tr_degree(i_,1) tr_degree(i_,2) 0],[0 0 0],[1 1 0]),1:length(tr_degree)) ; 
-dtl_degree(ii==2) = -dtl_degree(ii==2) ; 
-
-
-scatter(tr_degree(:,1),tr_degree(:,2),40,dtl_degree,'filled','MarkerEdgeColor','flat')
-colormap(rdbu)
-clim([-max(abs(dtl_degree)) max(abs(dtl_degree))])
-rl = refline(1,0)
-rl.Color = [0.8 0.8 0.8 ] ; 
-rl.LineWidth = 2 ;
-
-axis square
-
-xlabel('long degree rank')
-ylabel('short degree rank')
-
-colorbar
-
-nexttile()
-
-long_edge = tiedrank(tv(spike_conn.subset1.long)) ; 
-short_edge = tiedrank(tv(spike_conn.subset1.short)) ; 
-
-tr_edge = [tiedrank(long_edge(:))  tiedrank(short_edge(:)) ] ; 
-[~,ii] = max(tr_edge,[],2) ; 
-
-dtl_edge = arrayfun(@(i_) point_to_line([tr_edge(i_,1) tr_edge(i_,2) 0],[0 0 0],[1 1 0]),1:length(tr_edge)) ; 
-dtl_edge(ii==2) = -dtl_edge(ii==2) ; 
-
-dtl_edge_mat = mksq(dtl_edge) ; 
-
-scatter(tr_edge(:,1),tr_edge(:,2),6,dtl_edge,'filled','MarkerEdgeColor','flat')
-rl = refline(1,0)
-rl.Color = [0.8 0.8 0.8 ] ; 
-rl.LineWidth = 2 ;
-
-clim([-max(abs(dtl_edge)) max(abs(dtl_edge))])
-
-axis square 
-
-xlabel('long edge rank')
-ylabel('short edge rank')
-
-colorbar
-
-set(gcf,'Position',[100 100 800 500])
-
-%%
-
-set(gcf,'Color','w')
-orient(gcf,'landscape')
-
-out_figdir = [ './reports/figures/figA/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/shortlong_pref_scatter.pdf' ] ; 
-print(filename,'-dpdf','-vector')
-close(gcf)
-
-%% and make the cortex plot
-
-TL = tiledlayout(2,1)
-nt1 = nexttile()
-
-pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dtl_degree ,...
-    'valRange',[-max(abs(dtl_degree)) max(abs(dtl_degree))],...
-    'cmap',rdbu, ...
-    'viewcMap',0,'newFig',0,'viewStr','all',...
-    'parenth',TL)
-pp.Layout = nt1.Layout ; 
-
-nt2 = nexttile(TL)
-
-hh = imagesc(dtl_degree) 
-cb = colorbar()
-clim([-max(abs(dtl_degree)) max(abs(dtl_degree))])
-hh.Visible = 'off' ;
-hh.Parent.Visible = 'off' ; 
-cb.Location = "north" ; 
-cm = colormap() ; 
-colormap(nt2,cm(2:end,:))
-
-TL.TileSpacing = 'tight'
-
-set(gcf,'Position',[100 100 600 1000])
-
-out_figdir = [ './reports/figures/figA/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/shortlong_pref_cortex.png' ] ; 
-print(filename,'-dpng')
-close(gcf)
-
-%% top long edges 
-
-pp = 5 ; 
-
-topedges_mat = dtl_edge_mat>prctile(dtl_edge_mat(:),100-pp) ; 
-
-TL = tiledlayout(1,2)
-
-nexttile()
-
-h = imsc_grid_comm(topedges_mat,parc.ca(1:finfo.nnodes), ...
-    1,[1 1 1],[],parc.names(1:17))
-set(gca,'TickLength',[ 0 0])
-
-clim([0 1])
-axis square
-
-b = blues(11) ; 
-bb = b(6,:) ; 
-
-colormap(gca,[1 1 1 ; bb])
-
-xticks('')
-
-nexttile()
-
-imsc_grid_comm(get_blocky(topedges_mat,parc.ca(1:finfo.nnodes)),1:17, ...
-    1,[1 1 1],[],parc.names(1:17))
-set(gca,'TickLength',[ 0 0])
-
-colormap(gca,interp_cmap([1 1 1], bb,50))
-
-axis square
-
-xticks(1:17)
-
-TL.Title.String = { [ 'Top ' num2str(pp) '% long-perference edges' ]  ''  } 
-
-set(gcf,'Position',[100 100 800 500])
-set(gcf,'Color','w')
-orient(gcf,'landscape')
-
-%%
-
-out_figdir = [ './reports/figures/figA/' ] 
-mkdir(out_figdir)
-filename = [out_figdir '/top_longpref_edges.pdf' ] ; 
-print(filename,'-dpdf','-vector')
-close(gcf)
-
-
-%%
+% %% compare the short and long spike spaces
 % 
-% figure
-% imsc_grid_comm(get_blocky(dtl_edge_mat,parc.ca(1:finfo.nnodes)),1:17, ...
-%     1,[1 1 1],[],parc.names(1:17))
-% set(gca,'TickLength',[ 0 0])
+% TL = tiledlayout(1,2)
 % 
-% clim([-max(abs(dtl_edge)) max(abs(dtl_edge))])
+% nexttile()
+% 
+% long_degree = sum(spike_conn.subset1.long) ; 
+% short_degree = sum(spike_conn.subset1.short) ; 
+% 
+% tr_degree = [tiedrank(long_degree(:))  tiedrank(short_degree(:)) ] ; 
+% [~,ii] = max(tr_degree,[],2) ; 
+% 
+% dtl_degree = arrayfun(@(i_) point_to_line([tr_degree(i_,1) tr_degree(i_,2) 0],[0 0 0],[1 1 0]),1:length(tr_degree)) ; 
+% dtl_degree(ii==2) = -dtl_degree(ii==2) ; 
+% 
+% 
+% scatter(tr_degree(:,1),tr_degree(:,2),40,dtl_degree,'filled','MarkerEdgeColor','flat')
+% colormap(rdbu)
+% clim([-max(abs(dtl_degree)) max(abs(dtl_degree))])
+% rl = refline(1,0)
+% rl.Color = [0.8 0.8 0.8 ] ; 
+% rl.LineWidth = 2 ;
 % 
 % axis square
 % 
-% %% 
+% xlabel('long degree rank')
+% ylabel('short degree rank')
 % 
-% figure
-% imsc_grid_comm(dtl_edge_mat>prctile(dtl_edge_mat(:),95),parc.ca(1:finfo.nnodes), ...
+% colorbar
+% 
+% nexttile()
+% 
+% long_edge = tiedrank(tv(spike_conn.subset1.long)) ; 
+% short_edge = tiedrank(tv(spike_conn.subset1.short)) ; 
+% 
+% tr_edge = [tiedrank(long_edge(:))  tiedrank(short_edge(:)) ] ; 
+% [~,ii] = max(tr_edge,[],2) ; 
+% 
+% dtl_edge = arrayfun(@(i_) point_to_line([tr_edge(i_,1) tr_edge(i_,2) 0],[0 0 0],[1 1 0]),1:length(tr_edge)) ; 
+% dtl_edge(ii==2) = -dtl_edge(ii==2) ; 
+% 
+% dtl_edge_mat = mksq(dtl_edge) ; 
+% 
+% scatter(tr_edge(:,1),tr_edge(:,2),6,dtl_edge,'filled','MarkerEdgeColor','flat')
+% rl = refline(1,0)
+% rl.Color = [0.8 0.8 0.8 ] ; 
+% rl.LineWidth = 2 ;
+% 
+% clim([-max(abs(dtl_edge)) max(abs(dtl_edge))])
+% 
+% axis square 
+% 
+% xlabel('long edge rank')
+% ylabel('short edge rank')
+% 
+% colorbar
+% 
+% set(gcf,'Position',[100 100 800 500])
+% 
+% %%
+% 
+% set(gcf,'Color','w')
+% orient(gcf,'landscape')
+% 
+% out_figdir = [ './reports/figures/figA/' ]
+% mkdir(out_figdir)
+% filename = [out_figdir '/shortlong_pref_scatter.pdf' ] ; 
+% print(filename,'-dpdf','-vector')
+% close(gcf)
+% 
+% %% and make the cortex plot
+% 
+% TL = tiledlayout(2,1)
+% nt1 = nexttile()
+% 
+% pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dtl_degree ,...
+%     'valRange',[-max(abs(dtl_degree)) max(abs(dtl_degree))],...
+%     'cmap',rdbu, ...
+%     'viewcMap',0,'newFig',0,'viewStr','all',...
+%     'parenth',TL)
+% pp.Layout = nt1.Layout ; 
+% 
+% nt2 = nexttile(TL)
+% 
+% hh = imagesc(dtl_degree) 
+% cb = colorbar()
+% clim([-max(abs(dtl_degree)) max(abs(dtl_degree))])
+% hh.Visible = 'off' ;
+% hh.Parent.Visible = 'off' ; 
+% cb.Location = "north" ; 
+% cm = colormap() ; 
+% colormap(nt2,cm(2:end,:))
+% 
+% TL.TileSpacing = 'tight'
+% 
+% set(gcf,'Position',[100 100 600 1000])
+% 
+% out_figdir = [ './reports/figures/figA/' ]
+% mkdir(out_figdir)
+% filename = [out_figdir '/shortlong_pref_cortex.png' ] ; 
+% print(filename,'-dpng')
+% close(gcf)
+
+% %% top long edges (depreciated)
+% 
+% pp = 5 ; 
+% 
+% topedges_mat = dtl_edge_mat>prctile(dtl_edge_mat(:),100-pp) ; 
+% 
+% TL = tiledlayout(1,2)
+% 
+% nexttile()
+% 
+% h = imsc_grid_comm(topedges_mat,parc.ca(1:finfo.nnodes), ...
 %     1,[1 1 1],[],parc.names(1:17))
 % set(gca,'TickLength',[ 0 0])
 % 
 % clim([0 1])
+% axis square
+% 
+% b = blues(11) ; 
+% bb = b(6,:) ; 
+% 
+% colormap(gca,[1 1 1 ; bb])
+% 
+% xticks('')
+% 
+% nexttile()
+% 
+% imsc_grid_comm(get_blocky(topedges_mat,parc.ca(1:finfo.nnodes)),1:17, ...
+%     1,[1 1 1],[],parc.names(1:17))
+% set(gca,'TickLength',[ 0 0])
+% 
+% colormap(gca,interp_cmap([1 1 1], bb,50))
 % 
 % axis square
 % 
+% xticks(1:17)
+% 
+% TL.Title.String = { [ 'Top ' num2str(pp) '% long-perference edges' ]  ''  } 
+% 
+% set(gcf,'Position',[100 100 800 500])
+% set(gcf,'Color','w')
+% orient(gcf,'landscape')
+% 
 % %%
-
-%% compare to the two gradients! 
-
-
-grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii')) ; 
-
-scatter(grad_cifti(1,:),grad_cifti(2,:),40,dtl_degree,'filled','MarkerEdgeColor','flat')
-colormap(rdbu)
-
-xlabel('gradient 1')
-ylabel('gradient 2')
-
-[r1,p1] = corr(grad_cifti(1,:)',dtl_degree(:),'type','s') ; 
-[r2,p2] = corr(grad_cifti(2,:)',dtl_degree(:),'type','s') ; 
-
-text(0.6,0.9,[ 'rho w/ grad. 1: ' num2str(round(r1,2)) ],'Units','normalized')
-text(0.6,0.85,[ 'rho w/ grad. 2: ' num2str(round(r2,2)) ],'Units','normalized')
-
-axis square
-
-set(gcf,'Position',[100 100 400 400])
-
-%%
-
-out_figdir = [ './reports/figures/figA/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/shortlong_pref_grad12.pdf' ] ; 
-print(filename,'-dpdf','-vector')
-close(gcf)
-
-%%
-
-grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii')) ; 
-
-dat = spike_conn.subset1.long ./ (spike_conn.subset1.short + spike_conn.subset1.inter + spike_conn.subset1.long) ; 
-dat(isnan(dat)) = 0 ;
-dat = sum(dat) ; 
-
-scatter3(grad_cifti(1,:),grad_cifti(2,:),grad_cifti(3,:),40, dat ,'filled','MarkerEdgeColor','flat')
-
-xlabel('gradient 1')
-ylabel('gradient 2')
-
-clim([ prctile(dat,[02.5])  prctile(dat,97.5) ])
-
+% 
+% out_figdir = [ './reports/figures/figA/' ] 
+% mkdir(out_figdir)
+% filename = [out_figdir '/top_longpref_edges.pdf' ] ; 
+% print(filename,'-dpdf','-vector')
+% close(gcf)
+% 
+% 
+% %%
+% % 
+% % figure
+% % imsc_grid_comm(get_blocky(dtl_edge_mat,parc.ca(1:finfo.nnodes)),1:17, ...
+% %     1,[1 1 1],[],parc.names(1:17))
+% % set(gca,'TickLength',[ 0 0])
+% % 
+% % clim([-max(abs(dtl_edge)) max(abs(dtl_edge))])
+% % 
+% % axis square
+% % 
+% % %% 
+% % 
+% % figure
+% % imsc_grid_comm(dtl_edge_mat>prctile(dtl_edge_mat(:),95),parc.ca(1:finfo.nnodes), ...
+% %     1,[1 1 1],[],parc.names(1:17))
+% % set(gca,'TickLength',[ 0 0])
+% % 
+% % clim([0 1])
+% % 
+% % axis square
+% % 
+% % %%
+% 
+% %% compare to the two gradients! 
+% 
+% 
+% grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii')) ; 
+% 
+% scatter(grad_cifti(1,:),grad_cifti(2,:),40,dtl_degree,'filled','MarkerEdgeColor','flat')
+% colormap(rdbu)
+% 
+% xlabel('gradient 1')
+% ylabel('gradient 2')
+% 
 % [r1,p1] = corr(grad_cifti(1,:)',dtl_degree(:),'type','s') ; 
 % [r2,p2] = corr(grad_cifti(2,:)',dtl_degree(:),'type','s') ; 
 % 
 % text(0.6,0.9,[ 'rho w/ grad. 1: ' num2str(round(r1,2)) ],'Units','normalized')
 % text(0.6,0.85,[ 'rho w/ grad. 2: ' num2str(round(r2,2)) ],'Units','normalized')
-
-axis square
-
-colormap(parula)
-
-set(gcf,'Position',[100 100 400 400])
-
-%% do a scatter to many more gradients
-
-tiledlayout(3,3)
-
-for idx = 1:9
-
-    nexttile()
-
-    scatter_w_rho(grad_cifti(idx,:)',dtl_degree(:),"filled",'MarkerEdgeColor','none',...
-            'MarkerFaceColor',[0.8 0.8 0.8])
-    axis square
-
-    title({['gradient ' num2str(idx) ' vs'] 'long-short pref' })
-
-
-    if idx == 4
-        ylabel('long-short preference')
-    end
-
-    if idx == 8
-        xlabel('gradient val (a.u.)')
-    end
-
-end 
-
-set(gcf,'Position',[100 100 600 600])
-
-out_figdir = [ './reports/figures/figA/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/shortlong_pref_allgrad.pdf' ] ; 
-print(filename,'-dpdf','-vector')
-close(gcf)
+% 
+% axis square
+% 
+% set(gcf,'Position',[100 100 400 400])
+% 
+% %%
+% 
+% out_figdir = [ './reports/figures/figA/' ]
+% mkdir(out_figdir)
+% filename = [out_figdir '/shortlong_pref_grad12.pdf' ] ; 
+% print(filename,'-dpdf','-vector')
+% close(gcf)
+% 
+% %%
+% 
+% grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii')) ; 
+% 
+% dat = spike_conn.subset1.long ./ (spike_conn.subset1.short + spike_conn.subset1.inter + spike_conn.subset1.long) ; 
+% dat(isnan(dat)) = 0 ;
+% dat = sum(dat) ; 
+% 
+% scatter3(grad_cifti(1,:),grad_cifti(2,:),grad_cifti(3,:),40, dat ,'filled','MarkerEdgeColor','flat')
+% 
+% xlabel('gradient 1')
+% ylabel('gradient 2')
+% 
+% clim([ prctile(dat,[02.5])  prctile(dat,97.5) ])
+% 
+% % [r1,p1] = corr(grad_cifti(1,:)',dtl_degree(:),'type','s') ; 
+% % [r2,p2] = corr(grad_cifti(2,:)',dtl_degree(:),'type','s') ; 
+% % 
+% % text(0.6,0.9,[ 'rho w/ grad. 1: ' num2str(round(r1,2)) ],'Units','normalized')
+% % text(0.6,0.85,[ 'rho w/ grad. 2: ' num2str(round(r2,2)) ],'Units','normalized')
+% 
+% axis square
+% 
+% colormap(parula)
+% 
+% set(gcf,'Position',[100 100 400 400])
+% 
+% %% do a scatter to many more gradients
+% 
+% tiledlayout(3,3)
+% 
+% for idx = 1:9
+% 
+%     nexttile()
+% 
+%     scatter_w_rho(grad_cifti(idx,:)',dtl_degree(:),"filled",'MarkerEdgeColor','none',...
+%             'MarkerFaceColor',[0.8 0.8 0.8])
+%     axis square
+% 
+%     title({['gradient ' num2str(idx) ' vs'] 'long-short pref' })
+% 
+% 
+%     if idx == 4
+%         ylabel('long-short preference')
+%     end
+% 
+%     if idx == 8
+%         xlabel('gradient val (a.u.)')
+%     end
+% 
+% end 
+% 
+% set(gcf,'Position',[100 100 600 600])
+% 
+% out_figdir = [ './reports/figures/figA/' ]
+% mkdir(out_figdir)
+% filename = [out_figdir '/shortlong_pref_allgrad.pdf' ] ; 
+% print(filename,'-dpdf','-vector')
+% close(gcf)
 
 %% just some random stuff
 

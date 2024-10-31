@@ -217,7 +217,7 @@ end
 
 % lets do a simulation for each
 nsim = 5000 ; 
-spklen = zeros(nsim,1) ; 
+spklen1 = zeros(nsim,1) ; 
 %randoffsets = (rand(nsim,2)-0.5) .* 4 ; 
 randoffsets = normrnd(0,1,[nsim 2]) ; 
 
@@ -243,7 +243,7 @@ for shiftn = 1:3
         % end
 
         if ~isnan(ss)
-            spklen(idx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+            spklen1(idx) =  max(ss) ; % max, in case theres more than 1 for some reason 
         end
     end
     
@@ -251,13 +251,13 @@ for shiftn = 1:3
     % time... just keep them in, they don't affect much
     % spklen(snpkle>20) = nan ;
 
-    spklen = spklen .* TR ;
-    nt = sum(spklen>0) ;
+    spklen1 = spklen1 .* TR ;
+    nt = sum(spklen1>0) ;
 
-    histogram(nonzeros(spklen(spklen<(4*TR))),histedges,...
+    histogram(nonzeros(spklen1(spklen1<(4*TR))),histedges,...
         'EdgeAlpha',0,'FaceColor',[0.8 0.8 0.8]) ; 
     hold on
-    histogram(nonzeros(spklen(spklen>=(4*TR))),histedges,...
+    histogram(nonzeros(spklen1(spklen1>=(4*TR))),histedges,...
         'EdgeAlpha',0,'FaceColor',[0.5 0.5 0.5]) ; 
     hold off
 
@@ -267,7 +267,7 @@ for shiftn = 1:3
     xlim([1 20])
 
     % comput hitrate >= 2.88 sec
-    text(0.8,0.8,{ 'events >= 2.88' [ num2str(round(sum(spklen>=(4.*TR)) ./ nt,2)) '%']} , ...
+    text(0.8,0.8,{ 'events >= 2.88' [ num2str(round(sum(spklen1>=(4.*TR)) ./ nt,2)) '%']} , ...
         'units','normalized','HorizontalAlignment','center') ; 
 
     title('simulation')
@@ -334,7 +334,7 @@ end
 
 % lets do a simulation for each
 nsim = 5000 ; 
-spklen = zeros(nsim,1) ; 
+spklen1 = zeros(nsim,1) ; 
 %randoffsets = (rand(nsim,2)-0.5) .* 4 ; 
 randoffsets = normrnd(0,1,[nsim 2]) ; 
 
@@ -366,7 +366,7 @@ for shiftn = 1:3
         % end
 
         if ~isnan(ss)
-            spklen(idx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+            spklen1(idx) =  max(ss) ; % max, in case theres more than 1 for some reason 
         end
     end
     
@@ -374,13 +374,13 @@ for shiftn = 1:3
     % time... just keep them in, they don't affect much
     % spklen(snpkle>20) = nan ;
 
-    spklen = spklen .* TR ;
-    nt = sum(spklen>0) ;
+    spklen1 = spklen1 .* TR ;
+    nt = sum(spklen1>0) ;
 
-    histogram(nonzeros(spklen(spklen<(4*TR))),histedges,...
+    histogram(nonzeros(spklen1(spklen1<(4*TR))),histedges,...
         'EdgeAlpha',0,'FaceColor',[0.8 0.8 0.8]) ; 
     hold on
-    histogram(nonzeros(spklen(spklen>=(4*TR))),histedges,...
+    histogram(nonzeros(spklen1(spklen1>=(4*TR))),histedges,...
         'EdgeAlpha',0,'FaceColor',[0.5 0.5 0.5]) ; 
     hold off
 
@@ -390,7 +390,7 @@ for shiftn = 1:3
     xlim([1 20])
 
     % comput hitrate >= 2.88 sec
-    text(0.8,0.8,{ 'events >= 2.88' [ num2str(round(sum(spklen>=(4.*TR)) ./ nt,2)) '%']} , ...
+    text(0.8,0.8,{ 'events >= 2.88' [ num2str(round(sum(spklen1>=(4.*TR)) ./ nt,2)) '%']} , ...
         'units','normalized','HorizontalAlignment','center') ; 
 
     title('simulation')
@@ -446,4 +446,550 @@ close(gcf)
 % xlabel('node - edge hist. dist.')
 
 
+%% do a grid test 
 
+% hrflens = 1:10 ; 
+% nlens = length(hrflens) ; 
+% shiftlens = 0:5 ; 
+% nshifts = length(shiftlens) ; 
+% noiselevel = 0.25 ; 
+% baselineshift = 0.25 ; 
+% 
+% nsim = 1000 ; 
+% hrfamp = 2 ; 
+% %wanttime = 1:30 ; 
+% wanttime = find((getcanonicalhrf(1,0.72)*hrfamp).^2  > 2.25) ; 
+% % pad the ends
+% wanttime = [ wanttime(1)-1 wanttime wanttime(end)+1 ] ;
+% 
+% eventthr = 3 ; 
+% 
+% res1 = zeros(nlens,nshifts) ; 
+% res2 = zeros(nlens,nshifts) ; 
+% 
+% for idx = 1:nlens
+%     for jdx = 1:nshifts
+% 
+%         disp([num2str(idx) '-' num2str(jdx)])
+%         shiftn = shiftlens(jdx) ; 
+% 
+%         spklen1 = zeros(nsim,1) ; 
+%         spklen2 = zeros(nsim,1) ; 
+% 
+%         for sdx = 1:nsim
+% 
+%             hrf1 = getcanonicalhrf(1,TR).*hrfamp  ; 
+%             hrf2 = getcanonicalhrf(hrflens(idx),TR).*hrfamp  ; 
+% 
+%             hrf1 = hrf1 + normrnd(0,noiselevel,size(hrf1)) + ((rand(1)-0.5)*baselineshift) ; 
+%             hrf2 = hrf2 + normrnd(0,noiselevel,size(hrf2)) + ((rand(1)-0.5)*baselineshift) ; 
+% 
+%             % hrf1 = [zeros(1,shiftn) hrf1 ] ; 
+%             % hrf2 = [ hrf2 zeros(1,shiftn) ] ; 
+%             hrf1 = [ hrf1 zeros(1,shiftn) ] ; 
+%             hrf2 = [ zeros(1,shiftn) hrf2  ] ; 
+% 
+%             nullrf  = generate_phase_surrogates(hrf2',0)' ; 
+%             nullrf = (nullrf./(max(nullrf))).*hrfamp ; 
+%             nullrf = nullrf + normrnd(0,noiselevel,size(nullrf)) + ((rand(1)-0.5)*baselineshift) ; 
+% 
+%             wt = wanttime ; 
+% 
+%             ee = prod([hrf1(wt)' hrf2(wt)'],2) ;
+%             [~,ss ] = spk_lenmat(ee>eventthr) ; 
+%             ss=cell2mat(ss) ; 
+% 
+%             if ~isnan(ss)
+%                 spklen1(sdx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+%             end
+% 
+%             ee = prod([hrf1(wt)' nullrf(wt)'],2) ;
+%             [~,ss ] = spk_lenmat(ee>2.25) ; 
+%             ss=cell2mat(ss) ; 
+% 
+%             if ~isnan(ss)
+%                 spklen2(sdx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+%             end
+% 
+%         end
+% 
+%         spklen1 = spklen1 .* TR ;
+%         nt = sum(spklen1>0) ;
+%         res1(idx,jdx) = sum(spklen1>=(4.*TR)) ./ nt ; 
+% 
+% 
+%         spklen2 = spklen2 .* TR ;
+%         nt = sum(spklen2>0) ;
+%         res2(idx,jdx) = sum(spklen2>=(4.*TR)) ./ nt ; 
+% 
+%     end
+% end
+% 
+% tiledlayout(1,2)
+% 
+% nexttile
+% imagesc(res1)
+% ylabel('hrf duration')
+% xlabel('temporal shift')
+% xticks(1:nshifts)
+% xticklabels(cellstr(num2str(shiftlens')))
+% cb = colorbar ; 
+% cb.Label.String = 'hit rate' ; 
+% clim([0 1])
+% title('simulated event detection')
+% 
+% nexttile
+% imagesc(res2)
+% ylabel('hrf duration')
+% xlabel('temporal shift')
+% xticklabels(cellstr(num2str(shiftlens')))
+% cb = colorbar ; 
+% cb.Label.String = 'hit rate' ; 
+% clim([0 1])
+% title('simulated null event detection')
+
+%% Both HRFs change their length
+
+hrflens = 1:10 ; 
+nlens = length(hrflens) ; 
+shiftlens = 0.2:0.2:2 ; 
+nshifts = length(shiftlens) ; 
+noiselevels = [ 0.25 0.5 1] ;
+nnoise = length(noiselevels) ; 
+%baselineshift = 0.25 ; 
+
+nsim = 500 ; 
+hrfamp = 2 ; 
+wanttime = 1:30 ; 
+% wanttime = find((getcanonicalhrf(1,0.72)*hrfamp).^2  > 2.25) ; 
+% % pad the ends
+% wanttime = [ wanttime(1)-1 wanttime wanttime(end)+1 ] ;
+
+eventthr = 2.25 ; 
+
+res1 = zeros(nnoise,nlens,nshifts) ; 
+res2 = zeros(nnoise,nlens,nshifts) ; 
+
+rng(42)
+for ndx = 1:nnoise
+
+noiselevel = noiselevels(ndx) ; 
+
+for idx = 1:nlens
+    for jdx = 1:nshifts
+
+        disp([num2str(idx) '-' num2str(jdx)])
+        % shiftn = shiftlens(jdx) ; 
+
+        spklen1 = zeros(nsim,1) ; 
+        spklen2 = zeros(nsim,1) ; 
+
+        for sdx = 1:nsim
+
+            hrf1 = getcanonicalhrf(hrflens(idx),TR).*hrfamp  ; 
+            hrf2 = getcanonicalhrf(hrflens(idx),TR).*hrfamp  ; 
+
+            hrf2preshift = hrf2 + normrnd(0,noiselevel,size(hrf2)) ;
+            hrf1 = hrf1 + normrnd(0,noiselevel,size(hrf1)) + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+            hrf2 = hrf2preshift + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+
+            nullrf  = generate_phase_surrogates(hrf2preshift',0)' ; 
+            nullrf = (nullrf./(max(nullrf))).*hrfamp ; 
+            nullrf = nullrf + normrnd(0,noiselevel,size(nullrf)) + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+
+            wt = wanttime ; 
+
+            ee = prod([hrf1(wt)' hrf2(wt)'],2) ;
+            [~,ss ] = spk_lenmat(ee>eventthr) ; 
+            ss=cell2mat(ss) ; 
+
+            if ~isnan(ss)
+                spklen1(sdx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+            end
+
+            ee = prod([hrf1(wt)' nullrf(wt)'],2) ;
+            [~,ss ] = spk_lenmat(ee>2.25) ; 
+            ss=cell2mat(ss) ; 
+
+            if ~isnan(ss)
+                spklen2(sdx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+            end
+
+        end
+
+        spklen1 = spklen1 .* TR ;
+        nt = sum(spklen1>0) ;
+        res1(ndx,idx,jdx) = sum(spklen1>=(4.*TR)) ./ nt ; 
+
+
+        spklen2 = spklen2 .* TR ;
+        nt = sum(spklen2>0) ;
+        res2(ndx,idx,jdx) = sum(spklen2>=(4.*TR)) ./ nt ; 
+
+    end
+end
+
+end
+
+%%
+
+tiledlayout(2,3,'TileIndexing','columnmajor')
+
+for ndx = 1:3
+
+nt=nexttile
+h = imagesc(squeeze(res1(ndx,:,:))) ; 
+ylabel('hrf duration')
+xlabel('baseline var. mag')
+xticks(1:nshifts)
+xticklabels(cellstr(num2str(shiftlens')))
+yticks(hrflens)
+cb = colorbar ; 
+cb.Label.String = 'hit rate' ; 
+clim([0 1])
+title(['simulated event detection, noise: ' num2str(noiselevels(ndx))])
+colormap(nt,parula(100))
+
+nt = nexttile
+
+imagesc(squeeze(res2(ndx,:,:)))
+ylabel('hrf duration')
+xlabel('baseline var. mag')
+xticks(1:nshifts)
+xticklabels(cellstr(num2str(shiftlens')))
+yticks(hrflens)
+cb = colorbar ; 
+cb.Label.String = 'hit rate' ; 
+clim([0 1])
+title(['simulated null event detection, noise: ' num2str(noiselevels(ndx))])
+
+% nt = nexttile
+% %calc F1 score 
+% r1 = squeeze(res1(ndx,:,:)) ;
+% r2 = squeeze(res2(ndx,:,:)) ; 
+% 
+% f1mat = (2.* (r1.*nsim)) ./  ...
+%     ( (2.* (r1.*nsim)) + (r2.*nsim) + ((1-r1).*nsim) ) ; 
+% 
+% h = imagesc(f1mat) ; 
+% ylabel('hrf duration')
+% xlabel('baseline var. mag')
+% xticks(1:nshifts)
+% xticklabels(cellstr(num2str(shiftlens')))
+% yticks(hrflens)
+% cb = colorbar ; 
+% cb.Label.String = 'f1' ; 
+% clim([0 1])
+% title('f1 score')
+% colormap(nt,fblue(100))
+
+end
+
+%%
+
+set(gcf,'Position',[100 100 1200 600])
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/hrfxhrf_grid_noise.pdf' ] ; 
+print(filename,'-dpdf','-bestfit')
+close(gcf)
+
+%% %% same as above but keep 1 hrf of length 1
+
+hrflens = 1:10 ; 
+nlens = length(hrflens) ; 
+shiftlens = 0.2:0.2:2 ; 
+nshifts = length(shiftlens) ; 
+noiselevels = [ 0.25 0.5 1] ;
+nnoise = length(noiselevels) ; 
+%baselineshift = 0.25 ; 
+
+nsim = 500 ; 
+hrfamp = 2 ; 
+wanttime = 1:30 ; 
+% wanttime = find((getcanonicalhrf(1,0.72)*hrfamp).^2  > 2.25) ; 
+% % pad the ends
+% wanttime = [ wanttime(1)-1 wanttime wanttime(end)+1 ] ;
+
+eventthr = 2.25 ; 
+
+res1 = zeros(nnoise,nlens,nshifts) ; 
+res2 = zeros(nnoise,nlens,nshifts) ; 
+
+rng(42)
+for ndx = 1:nnoise
+
+noiselevel = noiselevels(ndx) ; 
+
+for idx = 1:nlens
+    for jdx = 1:nshifts
+
+        disp([num2str(idx) '-' num2str(jdx)])
+        % shiftn = shiftlens(jdx) ; 
+
+        spklen1 = zeros(nsim,1) ; 
+        spklen2 = zeros(nsim,1) ; 
+
+        for sdx = 1:nsim
+
+            hrf1 = getcanonicalhrf(hrflens(idx),TR).*hrfamp  ; 
+            hrf2 = [ zeros(1,hrflens(idx)) getcanonicalhrf(1,TR).*hrfamp ]   ; 
+
+            hrf2preshift = hrf2 + normrnd(0,noiselevel,size(hrf2)) ;
+            hrf1 = hrf1 + normrnd(0,noiselevel,size(hrf1)) + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+            hrf2 = hrf2preshift + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+
+            nullrf  = generate_phase_surrogates(hrf2preshift',0)' ; 
+            nullrf = (nullrf./(max(nullrf))).*hrfamp ; 
+            nullrf = nullrf + normrnd(0,noiselevel,size(nullrf)) + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+
+            wt = wanttime ; 
+
+            ee = prod([hrf1(wt)' hrf2(wt)'],2) ;
+            [~,ss ] = spk_lenmat(ee>eventthr) ; 
+            ss=cell2mat(ss) ; 
+
+            if ~isnan(ss)
+                spklen1(sdx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+            end
+
+            ee = prod([hrf1(wt)' nullrf(wt)'],2) ;
+            [~,ss ] = spk_lenmat(ee>2.25) ; 
+            ss=cell2mat(ss) ; 
+
+            if ~isnan(ss)
+                spklen2(sdx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+            end
+
+        end
+
+        spklen1 = spklen1 .* TR ;
+        nt = sum(spklen1>0) ;
+        res1(ndx,idx,jdx) = sum(spklen1>=(4.*TR)) ./ nt ; 
+
+
+        spklen2 = spklen2 .* TR ;
+        nt = sum(spklen2>0) ;
+        res2(ndx,idx,jdx) = sum(spklen2>=(4.*TR)) ./ nt ; 
+
+    end
+end
+
+end
+
+%%
+
+tiledlayout(2,3,'TileIndexing','columnmajor')
+
+for ndx = 1:3
+
+nt=nexttile
+h = imagesc(squeeze(res1(ndx,:,:))) ; 
+ylabel('hrf duration')
+xlabel('baseline var. mag')
+xticks(1:nshifts)
+xticklabels(cellstr(num2str(shiftlens')))
+yticks(hrflens)
+cb = colorbar ; 
+cb.Label.String = 'hit rate' ; 
+clim([0 1])
+title(['simulated event detection, noise: ' num2str(noiselevels(ndx))])
+colormap(nt,parula(100))
+
+nt = nexttile
+
+% % calc F1 score 
+% r1 = squeeze(res1(ndx,:,:)) ;
+% r2 = squeeze(res2(ndx,:,:)) ; 
+% 
+% f1mat = (2.* (r1.*nsim)) ./  ...
+%     ( (2.* (r1.*nsim)) + (r2.*nsim) + ((1-r1).*nsim) ) ; 
+% 
+% h = imagesc(f1mat) ; 
+% ylabel('hrf duration')
+% xlabel('baseline var. mag')
+% xticks(1:nshifts)
+% xticklabels(cellstr(num2str(shiftlens')))
+% yticks(hrflens)
+% cb = colorbar ; 
+% cb.Label.String = 'f1' ; 
+% clim([0 1])
+% title('f1 score')
+% colormap(nt,fblue(100))
+
+imagesc(squeeze(res2(ndx,:,:)))
+ylabel('hrf duration')
+xlabel('baseline var. mag')
+xticks(1:nshifts)
+xticklabels(cellstr(num2str(shiftlens')))
+yticks(hrflens)
+cb = colorbar ; 
+cb.Label.String = 'hit rate' ; 
+clim([0 1])
+title(['simulated null event detection, noise: ' num2str(noiselevels(ndx))])
+
+end
+
+set(gcf,'Position',[100 100 1200 600])
+set(gcf,'Color','w')
+
+%%
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/hrfxhrf_grid_noise.pdf' ] ; 
+print(filename,'-dpdf','-bestfit')
+close(gcf)
+
+
+%% DOESNT WORK ADDING THE NOISE THIS WAY
+% 
+% tiledlayout(2,3,'TileIndexing','columnmajor')
+% 
+% hrflens = 1:10 ; 
+% nlens = length(hrflens) ; 
+% shiftlens = 0.2:0.2:2 ; 
+% nshifts = length(shiftlens) ; 
+% %noiselevel = 0.25  ;
+% %baselineshift = 0.25 ; 
+% 
+% nsim = 500 ; 
+% hrfamp = 2 ; 
+% wanttime = 1:30 ; 
+% % wanttime = find((getcanonicalhrf(1,0.72)*hrfamp).^2  > 2.25) ; 
+% % % pad the ends
+% % wanttime = [ wanttime(1)-1 wanttime wanttime(end)+1 ] ;
+% 
+% noiselevels = [ 0.5 1 1.5 ] ; 
+% 
+% % eventthrs = [1.75 2.25 2.75] ; 
+% % nthr = length(eventthrs) ; 
+% eventthr = 2.25 ;
+% 
+% res1 = zeros(nnoise,nlens,nshifts) ; 
+% res2 = zeros(nnoise,nlens,nshifts) ; 
+% 
+% for ndx = 1:nthr
+% 
+% noiselevel = noiselevels(ndx) ; 
+% 
+% for idx = 1:nlens
+%     for jdx = 1:nshifts
+% 
+%         disp([num2str(idx) '-' num2str(jdx)])
+%         % shiftn = shiftlens(jdx) ; 
+% 
+%         spklen1 = zeros(nsim,1) ; 
+%         spklen2 = zeros(nsim,1) ; 
+% 
+%         for sdx = 1:nsim
+% 
+%             hrf1 = getcanonicalhrf(hrflens(idx),TR).*hrfamp  ; 
+%             hrf2 = getcanonicalhrf(hrflens(idx),TR).*hrfamp  ; 
+% 
+%             n1 = generate_phase_surrogates(hrf1',0)' ;
+%             n2 = generate_phase_surrogates(hrf2',0)' ;
+% 
+%             n1 = (n1./max(abs(n1))).*noiselevel; 
+%             n2 = (n2./max(abs(n2))).*noiselevel; 
+% 
+%             hrf1 = hrf1 + n1 + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+%             hrf2 = hrf2 + n2 + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+% 
+%             % hrf2preshift = hrf2 + normrnd(0,noiselevel,size(hrf2)) ;
+%             % hrf1 = hrf1 + normrnd(0,noiselevel,size(hrf1)) + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+%             % hrf2 = hrf2preshift + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+% 
+%             nullrf  = generate_phase_surrogates(getcanonicalhrf(hrflens(idx),TR)')' ; 
+%             nullrf = (nullrf./(max(nullrf))).*(rand(1).*hrfamp) ; 
+%             nullrf = nullrf + ((rand(1)-0.5)*shiftlens(jdx)) ; 
+%             % nullrf = -hrf2 ; 
+% 
+%             wt = wanttime ; 
+% 
+%             ee = prod([hrf1(wt)' hrf2(wt)'],2) ;
+%             [~,ss ] = spk_lenmat(ee>eventthr) ; 
+%             ss=cell2mat(ss) ; 
+% 
+%             if ~isnan(ss)
+%                 spklen1(sdx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+%             end
+% 
+%             ee = prod([hrf1(wt)' nullrf(wt)'],2) ;
+%             [~,ss ] = spk_lenmat(ee>2.25) ; 
+%             ss=cell2mat(ss) ; 
+% 
+%             if ~isnan(ss)
+%                 spklen2(sdx) =  max(ss) ; % max, in case theres more than 1 for some reason 
+%             end
+% 
+%         end
+% 
+%         spklen1 = spklen1 .* TR ;
+%         nt = sum(spklen1>0) ;
+%         res1(ndx,idx,jdx) = sum(spklen1>=(4.*TR)) ./ nt ; 
+% 
+% 
+%         spklen2 = spklen2 .* TR ;
+%         nt = sum(spklen2>0) ;
+%         res2(ndx,idx,jdx) = sum(spklen2>=(4.*TR)) ./ nt ; 
+% 
+%     end
+% end
+% 
+% 
+% nexttile
+% imagesc(squeeze(res1(ndx,:,:)))
+% ylabel('hrf duration')
+% xlabel('baseline var. mag')
+% xticks(1:nshifts)
+% xticklabels(cellstr(num2str(shiftlens')))
+% yticks(hrflens)
+% cb = colorbar ; 
+% cb.Label.String = 'hit rate' ; 
+% clim([0 1])
+% title('simulated event detection')
+% 
+% nexttile
+% 
+% % calc F1 score 
+% r1 = squeeze(res1(ndx,:,:)) ;
+% r2 = squeeze(res2(ndx,:,:)) ; 
+% 
+% f1mat = (2.* (r1.*nsim)) ./  ...
+%     ( (2.* (r1.*nsim)) + (r2.*nsim) + ((1-r1).*nsim) ) ; 
+% 
+% 
+% imagesc(f1mat)
+% ylabel('hrf duration')
+% xlabel('baseline var. mag')
+% xticks(1:nshifts)
+% xticklabels(cellstr(num2str(shiftlens')))
+% yticks(hrflens)
+% cb = colorbar ; 
+% cb.Label.String = 'f1 score' ; 
+% clim([0 1])
+% title('simulated null event detection')
+% 
+% end
+
+%%
+
+hrf = getcanonicalhrf(TR,1) ; 
+
+bc = zeros(100,1) ; 
+bc(2:10) = 1 ; 
+
+[~,cc] = pad_conv(bc,hrf,100) ; 
+
+%%
+
+writematrix([0.1:0.2:20]','/Users/faskowitzji/joshstuff/sandbox/hrfmag/evalhrftimes.txt')
+
+mat = zeros(100,100) ; 
+for idx = 1:100
+    mat(:,idx) = load([ '/Users/faskowitzji/joshstuff/sandbox/hrfmag/len' num2str(idx) '.txt' ] ) ; 
+end

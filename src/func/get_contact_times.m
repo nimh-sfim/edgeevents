@@ -34,14 +34,14 @@ if binseq(end) % ended on up
 end
 
 ictlens = f2 - f1 ; 
-lensInds = [f1+1 f2] ; 
+lensInds = [f1+1 ; f2] ; 
 
-    lensVec = zeros(n,1) ; 
-    for idx = 1:length(ictlens)
-        lensVec((f1(idx)+1):f2(idx)) = ictlens(idx) ; 
-    end
+lensVec = zeros(n,1) ; 
+for idx = 1:length(ictlens)
+    lensVec((f1(idx)+1):f2(idx)) = ictlens(idx) ; 
+end
 
-    indsVec = zeros(n,1) ; 
-    for idx = 1:length(ictlens)
-        indsVec((f1(idx)+1):f2(idx)) = idx ; 
-    end
+indsVec = zeros(n,1) ; 
+for idx = 1:length(ictlens)
+    indsVec((f1(idx)+1):f2(idx)) = idx ; 
+end
