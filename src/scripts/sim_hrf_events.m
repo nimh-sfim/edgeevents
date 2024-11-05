@@ -167,26 +167,28 @@ close(gcf)
 
 %%
 
-tiledlayout(1,3) ;
+TR = finfo.TR ; 
+tiledlayout(1,3,"TileSpacing",'none') ;
 
-hrfamps = [1.7 1.85 2 ] ; 
+hrfthrs = [2 2.25 2.5 ] ; 
 
 for tdx = 1:3
 
-    hrfamp = hrfamps(tdx) ; 
-    hrf = getcanonicalhrf(.1,1)*hrfamp ; 
+    hrfthr = hrfthrs(tdx) ; 
+
+    hrf = getcanonicalhrf_wmag(1,1) ; 
     
-    hrf2_onsets = 0:0.5:5 ; 
-    hrf2_lengths = 0.1:0.5:5 ; 
+    hrf2_onsets = 0:0.1:3 ; 
+    hrf2_lengths = 1:0.5:15 ; 
     % magDelta = 1:0.1:4 ; 
     
-    res = zeros(length(hrf2_onsets),length(hrf2_lengths)) ; 
+    res1 = zeros(length(hrf2_onsets),length(hrf2_lengths)) ; 
     
     for idx = 1:length(hrf2_onsets)
         for jdx = 1:length(hrf2_lengths)
     
             hrf1 = hrf.*1 ; 
-            hrf2 = getcanonicalhrf(hrf2_lengths(jdx),1)*hrfamp ; 
+            hrf2 = getcanonicalhrf_wmag(hrf2_lengths(jdx),1) ; 
     
             h1 = [ hrf1 ] ;
             
@@ -196,33 +198,926 @@ for tdx = 1:3
     
             ee = prod([h1(:) h2(:)],2) ; 
     
-            res(idx,jdx) = meas_abv_thr_interp(ee,2.25) ; 
+            res1(idx,jdx) = meas_abv_thr_interp(ee,hrfthr)*TR ; 
     
         end
     end
 
     nexttile()
 
-    imagesc(res)
+    h = imagesc(res1)
+    h.AlphaData = ~isnan(res1)
+    title(['event thr: ' num2str(hrfthrs(tdx)) ' co-fluc.' ])
+    clim([0 3])
+    if tdx == 3
+    cb = colorbar()
+    cb.Label.String = 'event length (sec)'
+    end
+
+    if tdx == 1
+    yticks(1:length(hrf2_onsets))
+    yticklabels(num2str(hrf2_onsets'))
+    ylabel('delta onset delta (sec)')
+    else
+        yticks([])
+    end
+
+    xticks(1:length(hrf2_lengths))
+    xticklabels(num2str(hrf2_lengths'))
+    xlabel('stim durration (sec)')
 
 end
 
+colormap(parula(100))
+
+%% print it
+
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+set(gcf,'Position',[0 100 1200 400])
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/grid_deltaonset_n_len.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%%
+
+neuralHz = 10 ; 
+
+poissonSpkGen = @(firingrateHz,lenSec) rand(1,floor(lenSec*neuralHz)) < (firingrateHz*1/neuralHz) ; 
+regularSpkGen = @(firingrateHz,lenSec) ismember(1:lenSec*neuralHz,floor(linspace(1,lenSec*neuralHz,floor(firingrateHz*lenSec)))) ; 
+irregularSpkGen = @(firingrateHz,lenSec,poissShiftVar) ...
+    ismember(1:lenSec*neuralHz, arrayfun(@(x_) x_ + (poissrnd(poissShiftVar)*randsample([-1,1],1)) , find(regularSpkGen(firingrateHz,lenSec)) )) ; 
+boxCarSpkGen = @(firingrateHz,lenSec) ones(floor(lenSec*neuralHz),1) ; 
+
+hrf = getcanonicalhrf_wmag(1/neuralHz,1/neuralHz) ; 
+
+useGenFunc = boxCarSpkGen ; 
+
+%%
+
+fmriHz = 1/TR ; 
+
+spkThrSweep = ( 2:0.05:3 ) ; 
+stimLenSweep = ( 1:0.5:10 ) ; 
+
+nrep=50 ; 
+res1 = zeros(length(spkThrSweep),length(stimLenSweep),nrep) ; 
+res2 = zeros(length(spkThrSweep),length(stimLenSweep),nrep) ; 
+
+rng(42)
+for ndx = 1:nrep
+
+disp(ndx)
+for idx = 1:length(spkThrSweep)
+    for jdx = 1:length(stimLenSweep)
+
+        %% neural ts get noise before convolution
+
+        % init ts of 60 sec
+        nts1 = zeros(neuralHz*60,1) ; 
+        nts2 = zeros(neuralHz*60,1) ; 
+
+        sig1Len = 1 ; 
+
+        % insert the 'neural activity' at 1 sec 
+        insertInds1 = (2*neuralHz):((2*neuralHz)+(sig1Len*neuralHz)-1) ;
+        insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+
+        nts1(insertInds1) = useGenFunc(NaN,sig1Len) ; 
+        nts2(insertInds2) = useGenFunc(NaN,stimLenSweep(jdx)) ; 
+
+        % convolve with the hrf at neuralHz
+        [~,cnts1] = pad_conv(nts1,hrf,100) ; 
+        [~,cnts2] = pad_conv(nts2,hrf,100) ; 
+
+        % resample to fmriHZ
+        fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
+        fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
+
+        % adding noise
+        % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+        % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+    
+        % add 2% signal noise 
+        fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*0.02)) ; 
+        fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*0.02)) ; 
+
+        ee = prod([fts1(:) fts2(:)],2) ; 
+
+        mm = meas_abv_thr_interp(ee,spkThrSweep(idx)).*TR ; 
+        if mm<0
+            error('neg length problem')
+        end
+
+        res2(idx,jdx,ndx) =  mm(1) ;
+
+    end
+end
+
+end
+
+%
+
+mat = mean(res2,3,'omitnan') ; 
+
+% set noise to %2 of signal
+% do boxcar
+% take a few thresholds 
+
+exemplarindz = [6 6; 6 10; 11 7 ] ; 
+exemplarindxcol = [0 0 1 ; 1 0 0 ; 0 1 0 ] ; 
+
+TL = tiledlayout(1,1+size(exemplarindxcol,1)) ; 
+
+nexttile(TL)
+
+
+%res2(isnan(res2)) = 0 ; 
+h = imagesc(mat) ; 
+h.AlphaData = ~isnan(mat) ; 
+cb = colorbar() ; 
+cb.Label.String = 'edge above thr. durration' ;
+
+yticks(1:length(spkThrSweep))
+yticklabels(num2str(spkThrSweep'))
+ylabel('co-fluct. threshold')
+
+xticks(1:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep'))
+xlabel('neural activity durration')
+
+
+clim([0 max(mat,[],'all')])
+
+for edx = 1:size(exemplarindxcol,1)
+    imsc_addsquare(1:length(spkThrSweep)==exemplarindz(edx,1), ...
+        1:length(stimLenSweep)== exemplarindz(edx,2), ...
+        0,exemplarindxcol(edx,:))
+end
+
+for edx = 1:size(exemplarindxcol,1)
+
+% get an exemplar
+
+nreps = 50 ; 
+exres = cell(nreps,1) ; 
+
+idx = exemplarindz(edx,1) ; 
+jdx = exemplarindz(edx,2) ; 
+
+for ndx = 1:nreps
+    % init ts of 60 sec
+    nts1 = zeros(neuralHz*60,1) ; 
+    nts2 = zeros(neuralHz*60,1) ; 
+
+    % insert the 'neural activity' at 1 sec 
+    sig1Len = 1 ; 
+
+    insertInds1 = (2*neuralHz):((2*neuralHz)+(sig1Len*neuralHz)-1) ;
+    insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+
+    nts1(insertInds1) = useGenFunc(NaN,sig1Len) ; 
+    nts2(insertInds2) = useGenFunc(NaN,stimLenSweep(jdx)) ; 
+
+    % convolve with the hrf at neuralHz
+    [~,cnts1] = pad_conv(nts1,hrf,100) ; 
+    [~,cnts2] = pad_conv(nts2,hrf,100) ; 
+
+    % resample to fmriHZ
+    fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
+    fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
+
+    % adding noise
+    % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+    % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+
+    % add 2% signal noise 
+    fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*0.02)) ; 
+    fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*0.02)) ; 
+
+    ee = prod([fts1(:) fts2(:)],2) ; 
+
+    exres{ndx} = [fts1 fts2 ee] ; 
+
+end
+
+%
+
+TL2 = tiledlayout(TL,3,1) ; 
+TL2.Layout.Tile = edx+1 ;
+
+nexttile(TL2,[2 1])
+
+timevec = (0:ceil(60*fmriHz)-1).*(1/fmriHz) ; 
+wt = 1:find(timevec>45,1,'first') ; 
+
+for ndx = 1:nreps
+
+    plot(timevec(wt)',exres{ndx}(wt,1),'Color',[0.5 0.5 0.5 0.1])
+    hold on
+    plot(timevec(wt)',exres{ndx}(wt,2),'Color',[0.5 0.5 0.5 0.1])
+
+
+    plot(timevec(wt)',exres{ndx}(wt,3),'Color',[exemplarindxcol(edx,:) 0.3])
+
+
+end
+
+text(0.5,0.4,{ ['threshold: ' num2str(spkThrSweep(idx))] ...
+    ['neural durration: ' num2str(stimLenSweep(jdx)) ' sec.'] ...
+    ['abv thr dur.: ' num2str(mat(idx,jdx)) ' sec.']},'units','normalized')
+
+xlim([0 45])
+ylim([-2 10])
+
+title('example time series')
+legend({'node time series' '' 'edge time series'})
+
+%
+
+rng(42)
+
+nex = 1 ; 
+exnts = zeros(neuralHz*60,nex) ; 
+
+for tdx = 1:nex
+
+% insert the 'neural activity' at 1 sec 
+insertInds = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+
+exnts(insertInds,tdx) = useGenFunc(NaN,stimLenSweep(jdx)) ; 
+
+end
+
+nexttile(TL2,[1 1])
+
+plot((0:1:(neuralHz*60)-1)/neuralHz,(exnts+0.5),'Color','b')
+% plot((0:1:(neuralHz*60)-1)/neuralHz,(exnts.*0.5)+(0.5:5),'Color','b')
+ylim([0 2])
+xlim([0 45])
+
+yticks([])
+
+title('example boxcar')
+xlabel('time (sec)')
+
+end
+
+%% print it
+
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+set(gcf,'Position',[0 100 1500 300])
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/grid_thr_by_len.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+
+%% now vary the length of both durrations 
+
+hrf = getcanonicalhrf_wmag(1/neuralHz,1/neuralHz) ; 
+
+
+fmriHz = 1/TR ; 
+
+%spkThrSweep = ( 2:0.05:3 ) ; 
+stimLenSweep = ( 0.1:0.2:5 ) ; 
+
+nrep=100 ; 
+res2 = zeros(length(stimLenSweep),length(stimLenSweep),nrep) ; 
+res2null = zeros(length(stimLenSweep),length(stimLenSweep),nrep) ; 
+
+rng(42)
+for ndx = 1:nrep
+
+disp(ndx)
+for idx = 1:length(stimLenSweep)
+    for jdx = 1:length(stimLenSweep)
+
+        %% neural ts get noise before convolution
+
+        % init ts of 60 sec
+        nts1 = zeros(neuralHz*60,1) ; 
+        nts2 = zeros(neuralHz*60,1) ; 
+
+        %sig1Len = 1 ; 
+
+        % insert the 'neural activity' at 1 sec 
+        insertInds1 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(idx)*neuralHz)-1) ;
+        insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+
+        nts1(insertInds1) = 1 ; 
+        nts2(insertInds2) = 1 ; 
+
+        % convolve with the hrf at neuralHz
+        [~,cnts1] = pad_conv(nts1,hrf,100) ; 
+        [~,cnts2] = pad_conv(nts2,hrf,100) ; 
+
+        % resample to fmriHZ
+        fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
+        fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
+
+        % adding noise
+        % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+        % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+    
+        % add 2% signal noise 
+        fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*0.02)) ; 
+        fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*0.02)) ; 
+
+        ee = prod([fts1(:) fts2(:)],2) ; 
+
+        mm = meas_abv_thr_interp(ee,2.25).*TR ; 
+        if mm<0
+            error('neg length problem')
+        end
+
+        res2(idx,jdx,ndx) =  mm(1) ;
+
+        %% now the null
+
+        nfts1 = generate_phase_surrogates(fts1) ; 
+        nfts2 = generate_phase_surrogates(fts2) ; 
+
+        nee = prod([nfts1(:) nfts2(:)],2) ; 
+
+        mm = meas_abv_thr_interp(nee,2.25).*TR ; 
+        mm = mm(1) ; 
+        if mm<0
+            error('neg length problem')
+        end
+
+        res2null(idx,jdx,ndx) = mm(1) ; 
+
+    end
+end
+
+end
+
+mat = mean(res2,3,'omitnan') ; 
+nmat = mean(res2null,3,'omitnan') ; 
+
+%%
+
+exemplarindz = [23 6; 15 16; 11 16 ] ; 
+exemplarindxcol = [0 0 1 ; 1 0 0 ; 0 1 0 ] ; 
+
+TL = tiledlayout(2,1+size(exemplarindxcol,1),'TileIndexing','rowmajor') ; 
+
+nexttile(TL)
+
+%res2(isnan(res2)) = 0 ; 
+h = imagesc(mat) ; 
+h.AlphaData = ~isnan(mat) ; 
+cb = colorbar() ; 
+cb.Label.String = 'edge above thr. durration' ;
+
+yticks(1:length(stimLenSweep))
+yticklabels(num2str(stimLenSweep'))
+ylabel('neural activity durration node A')
+
+xticks(1:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep'))
+xlabel('neural activity durration node B')
+
+clim([0 max(mat,[],'all')])
+
+for edx = 1:size(exemplarindxcol,1)
+    imsc_addsquare(1:length(stimLenSweep)==exemplarindz(edx,1), ...
+        1:length(stimLenSweep)== exemplarindz(edx,2), ...
+        0,exemplarindxcol(edx,:))
+end
+
+for edx = 1:size(exemplarindxcol,1)
+
+% get an exemplar
+
+nreps = 50 ; 
+exres = cell(nreps,1) ; 
+
+idx = exemplarindz(edx,1) ; 
+jdx = exemplarindz(edx,2) ; 
+
+for ndx = 1:nreps
+    % init ts of 60 sec
+    nts1 = zeros(neuralHz*60,1) ; 
+    nts2 = zeros(neuralHz*60,1) ; 
+
+    % insert the 'neural activity' at 1 sec 
+    sig1Len = 1 ; 
+
+    insertInds1 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(idx)*neuralHz)-1) ;
+    insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+
+    nts1(insertInds1) = 1 ; 
+    nts2(insertInds2) = 1 ; 
+
+    % convolve with the hrf at neuralHz
+    [~,cnts1] = pad_conv(nts1,hrf,100) ; 
+    [~,cnts2] = pad_conv(nts2,hrf,100) ; 
+
+    % resample to fmriHZ
+    fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
+    fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
+
+    % adding noise
+    % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+    % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+
+    % add 2% signal noise 
+    fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*0.02)) ; 
+    fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*0.02)) ; 
+
+    ee = prod([fts1(:) fts2(:)],2) ; 
+
+    exres{ndx} = [fts1 fts2 ee] ; 
+
+end
+
+TL2 = tiledlayout(TL,3,1) ; 
+TL2.Layout.Tile = edx+1 ;
+
+nexttile(TL2,[2 1])
+
+timevec = (0:ceil(60*fmriHz)-1).*(1/fmriHz) ; 
+wt = 1:find(timevec>45,1,'first') ; 
+
+for ndx = 1:nreps
+
+    plot(timevec(wt)',exres{ndx}(wt,1),'Color',[0.5 0.5 0.5 0.1])
+    hold on
+    plot(timevec(wt)',exres{ndx}(wt,2),'Color',[0.5 0.5 0.5 0.1])
+
+
+    plot(timevec(wt)',exres{ndx}(wt,3),'Color',[exemplarindxcol(edx,:) 0.3])
+
+
+end
+
+text(0.5,0.4,{ ...
+    ['durration A: '  num2str(stimLenSweep(idx)) ' sec' ] ...
+    ['durration B: ' num2str(stimLenSweep(jdx)) ' sec'] ...
+    ['abv. thr. dur.: ' num2str(mat(idx,jdx)) ' sec'] }, ...
+    'units','normalized')
+
+
+xlim([0 45])
+ylim([-2 10])
+
+title('example time series')
+legend({'node time series' '' 'edge time series'})
+
+%
+
+rng(42)
+
+%nex = 1 ; 
+exnts = zeros(neuralHz*60,2) ; 
+
+% insert the 'neural activity' at 1 sec 
+insertInds1 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(idx)*neuralHz)-1) ;
+insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+
+exnts(insertInds1,1) = 1 ; 
+exnts(insertInds2,2) = 1 ; 
+
+
+nexttile(TL2,[1 1])
+
+plot((0:1:(neuralHz*60)-1)/neuralHz,(exnts.*0.5)+fliplr((0.5:2)),'Color','b')
+% plot((0:1:(neuralHz*60)-1)/neuralHz,(exnts.*0.5)+(0.5:5),'Color','b')
+ylim([0 2.5])
+xlim([0 45])
+
+yticks([.5 1.5])
+yticklabels({'B' 'A'})
+
+title('example boxcar')
+xlabel('time (sec)')
+
+end
+
+%
+
+nexttile(TL)
+
+%res2(isnan(res2)) = 0 ; 
+
+h = imagesc(nmat) ; 
+h.AlphaData = ~isnan(nmat) ; 
+cb = colorbar() ; 
+cb.Label.String = 'edge above thr. durration' ;
+
+yticks(1:length(stimLenSweep))
+yticklabels(num2str(stimLenSweep'))
+ylabel('neural activity durration node A')
+
+xticks(1:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep'))
+xlabel('neural activity durration node B')
+
+clim([0 max(mat,[],'all')])
+
+for edx = 1:size(exemplarindxcol,1)
+    imsc_addsquare(1:length(stimLenSweep)==exemplarindz(edx,1), ...
+        1:length(stimLenSweep)== exemplarindz(edx,2), ...
+        0,exemplarindxcol(edx,:))
+end
+
+for edx = 1:size(exemplarindxcol,1)
+
+% get an exemplar
+
+nreps = 50 ; 
+exres = cell(nreps,1) ; 
+
+idx = exemplarindz(edx,1) ; 
+jdx = exemplarindz(edx,2) ; 
+
+for ndx = 1:nreps
+    % init ts of 60 sec
+    nts1 = zeros(neuralHz*60,1) ; 
+    nts2 = zeros(neuralHz*60,1) ; 
+
+    % insert the 'neural activity' at 1 sec 
+    sig1Len = 1 ; 
+
+    insertInds1 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(idx)*neuralHz)-1) ;
+    insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+
+    nts1(insertInds1) = 1 ; 
+    nts2(insertInds2) = 1 ; 
+
+    % convolve with the hrf at neuralHz
+    [~,cnts1] = pad_conv(nts1,hrf,100) ; 
+    [~,cnts2] = pad_conv(nts2,hrf,100) ; 
+
+    % resample to fmriHZ
+    fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
+    fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
+
+    % adding noise
+    % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+    % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+
+    % add 2% signal noise 
+    fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*0.02)) ; 
+    fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*0.02)) ; 
+
+    nfts1 = generate_phase_surrogates(fts1);
+    nfts2 = generate_phase_surrogates(fts2);
+ 
+    nee = prod([nfts1(:) nfts2(:)],2) ; 
+
+    exres{ndx} = [nfts1 nfts2 nee] ; 
+
+end
+
+TL2 = tiledlayout(TL,3,1) ; 
+TL2.Layout.Tile = edx+5 ;
+
+nexttile(TL2,[2 1])
+
+timevec = (0:ceil(60*fmriHz)-1).*(1/fmriHz) ; 
+wt = 1:find(timevec>45,1,'first') ; 
+
+for ndx = 1:nreps
+
+    plot(timevec(wt)',exres{ndx}(wt,1),'Color',[0.5 0.5 0.5 0.1])
+    hold on
+    plot(timevec(wt)',exres{ndx}(wt,2),'Color',[0.5 0.5 0.5 0.1])
+
+
+    plot(timevec(wt)',exres{ndx}(wt,3),'Color',[exemplarindxcol(edx,:) 0.3])
+
+
+end
+
+hr = (nrep-sum(isnan(res2null),3))./100 ; 
+
+text(0.1,0.7,{ ...
+    ['durration A: '  num2str(stimLenSweep(idx)) ' sec' ] ...
+    ['durration B: ' num2str(stimLenSweep(jdx)) ' sec'] ...
+    ['abv. thr. dur.: ' num2str(nmat(idx,jdx)) ' sec'] ...
+    ['hit rate: ' num2str(hr(idx,jdx)) '%' ] }, ...
+    'units','normalized')
+
+
+xlim([0 45])
+ylim([-2 10])
+
+title('example time series')
+legend({'node time series' '' 'edge time series'})
+
+%
+
+rng(42)
+
+%nex = 1 ; 
+exnts = zeros(neuralHz*60,2) ; 
+
+% insert the 'neural activity' at 1 sec 
+insertInds1 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(idx)*neuralHz)-1) ;
+insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+
+exnts(insertInds1,1) = 1 ; 
+exnts(insertInds2,2) = 1 ; 
+
+
+nexttile(TL2,[1 1])
+
+plot((0:1:(neuralHz*60)-1)/neuralHz,(exnts.*0.5)+fliplr((0.5:2)),'Color','b')
+% plot((0:1:(neuralHz*60)-1)/neuralHz,(exnts.*0.5)+(0.5:5),'Color','b')
+ylim([0 2.5])
+xlim([0 45])
+
+yticks([.5 1.5])
+yticklabels({'B' 'A'})
+
+title('example boxcar')
+xlabel('time (sec)')
+
+end
+
+%% print it
+
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+set(gcf,'Position',[0 100 1500 600])
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/grid_len_by_len.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%% plot the HR matrix
+
+tiledlayout(1,2)
+
+nexttile
+h = imagesc(hr) ; 
+h.AlphaData = hr~=0 ; 
+cb = colorbar() ; 
+cb.Label.String = 'above threshold event detection rate' ;
+
+yticks(1:length(stimLenSweep))
+yticklabels(num2str(stimLenSweep'))
+ylabel('neural activity durration node A')
+
+xticks(1:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep'))
+xlabel('neural activity durration node B')
+
+nexttile
+h = imagesc(hr.*nmat) ; 
+h.AlphaData = hr~=0 ; 
+cb = colorbar() ; 
+cb.Label.String = 'detection rate * mean abv. thr time' ;
+
+yticks(1:length(stimLenSweep))
+yticklabels(num2str(stimLenSweep'))
+ylabel('neural activity durration node A')
+
+xticks(1:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep'))
+xlabel('neural activity durration node B')
+
+%%
+
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+set(gcf,'Position',[0 100 800 400])
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/grid_null_mats.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
 %% 
 
-
-
-tr = 100 ; 
-
-poissonSpkGen = @(firingrateHz,lenSec) rand(1,floor(lenSec*tr)) < (firingrateHz*1/tr) ; 
-regularSpkGen = @(firingrateHz,lenSec) ismember(1:lenSec*tr,floor(linspace(1,lenSec*tr,floor(firingrateHz*lenSec)))) ; 
-irregularSpkGen = @(firingrateHz,lenSec,poissVar) ...
-    ismember(1:lenSec*tr, arrayfun(@(x_) x_ + (poissrnd(poissVar)*randsample([-1,1],1)) , find(regularSpkGen(firingrateHz,lenSec)) )) ; 
-
-
-hrf = getcanonicalhrf(.1,1/tr) ; 
-
-neuralhz = [  ]
-
-
-
- ismember(1:lenSec*tr,floor(linspace(1,lenSec*tr,floor(firingrateHz*lenSec))))
+% neuralHz = 10 ; 
+% 
+% poissonSpkGen = @(firingrateHz,lenSec) rand(1,floor(lenSec*neuralHz)) < (firingrateHz*1/neuralHz) ; 
+% regularSpkGen = @(firingrateHz,lenSec) ismember(1:lenSec*neuralHz,floor(linspace(1,lenSec*neuralHz,floor(firingrateHz*lenSec)))) ; 
+% irregularSpkGen = @(firingrateHz,lenSec,poissShiftVar) ...
+%     ismember(1:lenSec*neuralHz, arrayfun(@(x_) x_ + (poissrnd(poissShiftVar)*randsample([-1,1],1)) , find(regularSpkGen(firingrateHz,lenSec)) )) ; 
+% boxCarSpkGen = @(firingrateHz,lenSec) ones(floor(lenSec*neuralHz),1) ; 
+% 
+% hrf = getcanonicalhrf_wmag(1/neuralHz,1/neuralHz) ; 
+% 
+% useGenFunc = boxCarSpkGen ; 
+% 
+% %
+% 
+% fmriHz = 1/TR ; 
+% 
+% spkHzSweep = ( 1:0.5:10 ) ; 
+% stimLenSweep = ( 1:0.5:10 ) ; 
+% 
+% nrep=50 ; 
+% res1 = zeros(length(spkHzSweep),length(stimLenSweep),nrep) ; 
+% res2 = zeros(length(spkHzSweep),length(stimLenSweep),nrep) ; 
+% 
+% rng(42)
+% for ndx = 1:nrep
+% 
+% disp(ndx)
+% for idx = 1:length(spkHzSweep)
+%     for jdx = 1:length(stimLenSweep)
+% 
+%         %% neural ts get noise before convolution
+% 
+%         % init ts of 60 sec
+%         nts1 = zeros(neuralHz*60,1) ; 
+%         nts2 = zeros(neuralHz*60,1) ; 
+% 
+%         sig1Len = 1 ; 
+% 
+%         % insert the 'neural activity' at 1 sec 
+%         insertInds1 = (2*neuralHz):((2*neuralHz)+(sig1Len*neuralHz)-1) ;
+%         insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+% 
+%         nts1(insertInds1) = useGenFunc(spkHzSweep(idx),sig1Len) ; 
+%         nts2(insertInds2) = useGenFunc(spkHzSweep(idx),stimLenSweep(jdx)) ; 
+% 
+%         % convolve with the hrf at neuralHz
+%         [~,cnts1] = pad_conv(nts1,hrf,100) ; 
+%         [~,cnts2] = pad_conv(nts2,hrf,100) ; 
+% 
+%         % resample to fmriHZ
+%         fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
+%         fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
+% 
+%         % adding noise
+%         % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+%         % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+% 
+%         % add 2% signal noise 
+%         fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*0.02)) ; 
+%         fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*0.02)) ; 
+% 
+%         ee = prod([fts1(:) fts2(:)],2) ; 
+% 
+%         mm = meas_abv_thr_interp(ee,2.25).*TR ; 
+%         if mm<0
+%             error('neg length problem')
+%         end
+% 
+%         res2(idx,jdx,ndx) =  mm(1) ;
+% 
+%     end
+% end
+% 
+% end
+% 
+% mat = mean(res2,3,'omitnan') ; 
+% 
+% %%
+% 
+% % set noise to %2 of signal
+% % do boxcar
+% % take a few thresholds 
+% 
+% exemplarindz = [13 9; 12 16; 4 19 ] ; 
+% exemplarindxcol = [0 0 1 ; 1 0 0 ; 0 1 0 ] ; 
+% 
+% TL = tiledlayout(1,1+size(exemplarindxcol,1)) ; 
+% 
+% nexttile(TL)
+% 
+% 
+% %res2(isnan(res2)) = 0 ; 
+% h = imagesc(mat) ; 
+% h.AlphaData = ~isnan(mat) ; 
+% cb = colorbar() ; 
+% cb.Label.String = 'edge above thr. durration' ;
+% 
+% yticks(1:length(spkHzSweep))
+% yticklabels(num2str(spkHzSweep'))
+% ylabel('neural spk. Hz')
+% 
+% xticks(1:length(stimLenSweep))
+% xticklabels(num2str(stimLenSweep'))
+% xlabel('stim durration')
+% 
+% 
+% clim([0 max(mat,[],'all')])
+% 
+% for edx = 1:size(exemplarindxcol,1)
+%     imsc_addsquare(1:length(spkHzSweep)==exemplarindz(edx,1), ...
+%         1:length(stimLenSweep)== exemplarindz(edx,2), ...
+%         0,exemplarindxcol(edx,:))
+% end
+% 
+% for edx = 1:size(exemplarindxcol,1)
+% 
+% % get an exemplar
+% 
+% nreps = 50 ; 
+% exres = cell(nreps,1) ; 
+% 
+% idx = exemplarindz(edx,1) ; 
+% jdx = exemplarindz(edx,2) ; 
+% 
+% for ndx = 1:nreps
+%     % init ts of 60 sec
+%     nts1 = zeros(neuralHz*60,1) ; 
+%     nts2 = zeros(neuralHz*60,1) ; 
+% 
+%     % insert the 'neural activity' at 1 sec 
+%     sig1Len = 1 ; 
+% 
+%     insertInds1 = (2*neuralHz):((2*neuralHz)+(sig1Len*neuralHz)-1) ;
+%     insertInds2 = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+% 
+%     nts1(insertInds1) = useGenFunc(spkHzSweep(idx),sig1Len) ; 
+%     nts2(insertInds2) = useGenFunc(spkHzSweep(idx),stimLenSweep(jdx)) ; 
+% 
+%     % convolve with the hrf at neuralHz
+%     [~,cnts1] = pad_conv(nts1,hrf,100) ; 
+%     [~,cnts2] = pad_conv(nts2,hrf,100) ; 
+% 
+%     % resample to fmriHZ
+%     fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
+%     fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
+% 
+%     % adding noise
+%     % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+%     % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+% 
+%     % add 2% signal noise 
+%     fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*0.02)) ; 
+%     fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*0.02)) ; 
+% 
+%     ee = prod([fts1(:) fts2(:)],2) ; 
+% 
+%     exres{ndx} = [fts1 fts2 ee] ; 
+% 
+% end
+% 
+% %
+% 
+% TL2 = tiledlayout(TL,3,1) ; 
+% TL2.Layout.Tile = edx+1 ;
+% 
+% nexttile(TL2,[2 1])
+% 
+% timevec = (0:ceil(60*fmriHz)-1).*(1/fmriHz) ; 
+% wt = 1:find(timevec>45,1,'first') ; 
+% 
+% for ndx = 1:nreps
+% 
+%     plot(timevec(wt)',exres{ndx}(wt,1),'Color',[0.5 0.5 0.5 0.1])
+%     hold on
+%     plot(timevec(wt)',exres{ndx}(wt,2),'Color',[0.5 0.5 0.5 0.1])
+% 
+% 
+%     plot(timevec(wt)',exres{ndx}(wt,3),'Color',[exemplarindxcol(edx,:) 0.3])
+% 
+% 
+% end
+% 
+% text(0.6,0.6,['spike Hz: ' num2str(spkHzSweep(idx))],'units','normalized')
+% text(0.6,0.5,['spiking durration: ' num2str(stimLenSweep(jdx)) ' sec.'],'units','normalized')
+% text(0.6,0.4,['abv thr len: ' num2str(mat(idx,jdx)) ' sec.'],'units','normalized')
+% 
+% xlim([0 45])
+% ylim([-2 20])
+% 
+% title('example time series')
+% legend({'node time series' '' 'edge time series'})
+% 
+% %
+% 
+% rng(42)
+% 
+% nex = 1 ; 
+% exnts = zeros(neuralHz*60,nex) ; 
+% 
+% for tdx = 1:nex
+% 
+% % insert the 'neural activity' at 1 sec 
+% insertInds = (2*neuralHz):((2*neuralHz)+(stimLenSweep(jdx)*neuralHz)-1) ;
+% 
+% exnts(insertInds,tdx) = useGenFunc(spkHzSweep(idx),stimLenSweep(jdx)) ; 
+% 
+% end
+% 
+% nexttile(TL2,[1 1])
+% 
+% plot((0:1:(neuralHz*60)-1)/neuralHz,(exnts+0.5),'Color','b')
+% % plot((0:1:(neuralHz*60)-1)/neuralHz,(exnts.*0.5)+(0.5:5),'Color','b')
+% ylim([0 5.5])
+% xlim([0 45])
+% 
+% title('example neural spikes')
+% 
+% end

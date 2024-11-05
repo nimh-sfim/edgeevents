@@ -1,6 +1,6 @@
 function abvthr = meas_abv_thr_interp(ints,thr)
 
-[~,~,~,aa] = get_contact_times(ints>=thr) ; 
+[~,~,~,aa] = get_contact_times(ints>thr) ; 
 
 if isnan(aa)
     abvthr = nan ; 
@@ -8,13 +8,13 @@ if isnan(aa)
 end
 
 ntp = length(ints) ;
-nabv = size(aa,2) ; 
+nabv = size(aa,1) ; 
 abvthr=nan(nabv,1) ; 
 
 for idx = 1:nabv
 
-    riseind = aa(1,idx) ; 
-    fallind = aa(2,idx) ; 
+    riseind = aa(idx,1) ; 
+    fallind = aa(idx,2) ; 
 
     if riseind==1 
         riseadd=0 ; 

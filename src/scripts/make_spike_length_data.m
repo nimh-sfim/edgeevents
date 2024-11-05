@@ -372,7 +372,7 @@ nexttile()
 h = plplot(spike_lengths.all.subset1,xmin1,alpha1) ; 
 
 xlabel({'event lengths (sec)'})
-legend({'' ['power fit, xmin: ' num2str(xmin)] },'Location','southwest')
+legend({'' ['power fit, xmin: ' num2str(single(xmin1)*finfo.TR)] },'Location','southwest')
 xticklabels({'0' num2str(10*finfo.TR) num2str((10^2)*finfo.TR) }) ; 
 
 title('subset 1')
@@ -382,7 +382,7 @@ nexttile()
 h = plplot(spike_lengths.all.subset2,xmin2,alpha2) ; 
 
 xlabel({'event lengths (sec)'})
-legend({'' ['power fit, xmin: ' num2str(xmin)] },'Location','southwest')
+legend({'' ['power fit, xmin: ' num2str(single(xmin2)*finfo.TR)] },'Location','southwest')
 xticklabels({'0' num2str(10*finfo.TR) num2str((10^2)*finfo.TR) }) ; 
 
 title('subset 2')
@@ -398,3 +398,34 @@ mkdir(out_figdir)
 filename = [out_figdir '/power_law.pdf' ] ; 
 print(filename,'-dpdf')
 close(gcf)
+
+%% make a mean spike length picture
+
+spklenmat = zeros(finfo.nnodes,finfo.nnodes) ; 
+
+for idx = 1:length(sublist.subset1)
+    disp(idx)
+
+    tmp = mksq(cellfun(@(x) mean(x,'omitnan'),spike_lengths.subset1{idx} )) ; 
+    tmp(isnan(tmp)) = 0 ; 
+
+    spklenmat = spklenmat + tmp(1:finfo.nnodes,1:finfo.nnodes) ; 
+
+end
+spklenmat = spklenmat ./ length(sublist.subset1) ; 
+
+%%
+
+CM = viridis(100); 
+
+parc_plot_wcolorbar(mean(spklenmat),surfss,annotm,...
+    [min((mean(spklenmat))) max(mean(spklenmat))],CM,[100 100 600 1000])
+
+%%
+
+out_figdir = [ './reports/figures/figA/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/spike_length_cortex.pdf' ] ; 
+print(filename,'-dpdf','-bestfit')
+close(gcf)
+

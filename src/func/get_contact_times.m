@@ -5,6 +5,9 @@ if ~isvector(binseq)
     error('input needs to be vector')
 end
 
+% make sure it's a column
+binseq = binseq(:) ; 
+
 if ~all(ismember(binseq,[0 1]))
     error('needs to be binary sequence')
 end
@@ -34,7 +37,7 @@ if binseq(end) % ended on up
 end
 
 ictlens = f2 - f1 ; 
-lensInds = [f1+1 ; f2] ; 
+lensInds = [f1+1 f2] ; 
 
 lensVec = zeros(n,1) ; 
 for idx = 1:length(ictlens)
