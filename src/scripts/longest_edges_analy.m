@@ -12,7 +12,7 @@ SPK_THR = 2.25 ;
 
 %% load the spike conn
 
-filename = [ DD.PROC '/spk_conn_avg_' OUTSTR '.mat' ] ; 
+filename = [ DD.PROC '/spk_conn_ex_avg_' OUTSTR '.mat' ] ; 
 load(filename)
 
 %% look at long vs short scatter again, and extract just the super long edges
@@ -23,7 +23,6 @@ load(filename)
 % tld = arrayfun(@(i_) point_to_line([dat1(i_) dat2(i_) 0],[0 0 0],[1 1 0]),1:length(dat1)) ; 
 % 
 % longest_edges = tld>3 ; 
-
 
 %% do some stat testing
 
@@ -43,10 +42,54 @@ rng(42)
 
 surrA = struct() ;
 surrB = struct() ;
-lennames = {'short' 'inter' 'long'} ; 
+% lennames = {'short' 'inter' 'long'} ; 
+% 
+% % and record for this boot
+% for sdx = 1:3
+%     surrA.(lennames{sdx}) = zeros(finfo.nnodes,finfo.nnodes,nboot); 
+%     surrB.(lennames{sdx}) = zeros(finfo.nnodes,finfo.nnodes,nboot) ; 
+% end
+% 
+% for idx = 1:nboot
+% 
+%     disp(idx)
+% 
+%     % pickout the surr data to average
+%     bootinds = randsample(1:nperms,subsetsz,true) ; 
+% 
+%     tmpA = zeros(3,finfo.nnodes*(finfo.nnodes-1)/2) ; 
+%     tmpB = zeros(3,finfo.nnodes*(finfo.nnodes-1)/2)  ; 
+% 
+%     for bdx = bootinds 
+% 
+%         aa = arrayfun(@(i_)simmat.nocov{bdx}(i_,:),1:3,'UniformOutput',false) ; 
+%         bb = arrayfun(@(i_)simmat.keepcov{bdx}(i_,:),1:3,'UniformOutput',false) ; 
+% 
+%         for sdx = 1:3
+%             tmpA(sdx,:) = tmpA(sdx,:) + aa{sdx}  ; 
+%             tmpB(sdx,:) = tmpB(sdx,:) + bb{sdx}  ; 
+%         end
+% 
+%     end
+% 
+%     % make mean
+%     for sdx = 1:3
+%         tmpA(sdx,:) = tmpA(sdx,:) ./ subsetsz  ; 
+%         tmpB(sdx,:) = tmpB(sdx,:) ./ subsetsz  ; 
+%     end
+% 
+%     % and record for this boot
+%     for sdx = 1:3
+%         surrA.(lennames{sdx})(:,:,idx) = mksq(tmpA(sdx,:)) ; 
+%         surrB.(lennames{sdx})(:,:,idx) = mksq(tmpB(sdx,:)) ; 
+%     end
+% 
+% end 
+
+lennames = {'longer' 'longest'} ; 
 
 % and record for this boot
-for sdx = 1:3
+for sdx = 1:2
     surrA.(lennames{sdx}) = zeros(finfo.nnodes,finfo.nnodes,nboot); 
     surrB.(lennames{sdx}) = zeros(finfo.nnodes,finfo.nnodes,nboot) ; 
 end
@@ -58,54 +101,54 @@ for idx = 1:nboot
     % pickout the surr data to average
     bootinds = randsample(1:nperms,subsetsz,true) ; 
 
-    tmpA = zeros(3,finfo.nnodes*(finfo.nnodes-1)/2) ; 
-    tmpB = zeros(3,finfo.nnodes*(finfo.nnodes-1)/2)  ; 
+    tmpA = zeros(2,finfo.nnodes*(finfo.nnodes-1)/2) ; 
+    tmpB = zeros(2,finfo.nnodes*(finfo.nnodes-1)/2)  ; 
 
     for bdx = bootinds 
 
-        aa = arrayfun(@(i_)simmat.nocov{bdx}(i_,:),1:3,'UniformOutput',false) ; 
-        bb = arrayfun(@(i_)simmat.keepcov{bdx}(i_,:),1:3,'UniformOutput',false) ; 
+        aa = arrayfun(@(i_)simmat.nocov{bdx}(i_,:),4:5,'UniformOutput',false) ; 
+        bb = arrayfun(@(i_)simmat.keepcov{bdx}(i_,:),4:5,'UniformOutput',false) ; 
 
-        for sdx = 1:3
+        for sdx = 1:2
             tmpA(sdx,:) = tmpA(sdx,:) + aa{sdx}  ; 
             tmpB(sdx,:) = tmpB(sdx,:) + bb{sdx}  ; 
         end
 
     end
     
+    if any(any(mksq(tmpB(1,:))<mksq(tmpB(2,:))))
+        error('whats up here')
+    end
+
     % make mean
-    for sdx = 1:3
+    for sdx = 1:2
         tmpA(sdx,:) = tmpA(sdx,:) ./ subsetsz  ; 
         tmpB(sdx,:) = tmpB(sdx,:) ./ subsetsz  ; 
     end
 
     % and record for this boot
-    for sdx = 1:3
+    for sdx = 1:2
         surrA.(lennames{sdx})(:,:,idx) = mksq(tmpA(sdx,:)) ; 
         surrB.(lennames{sdx})(:,:,idx) = mksq(tmpB(sdx,:)) ; 
     end
 
-end
+end 
 
 %%
 
-sigmoreA = struct() ; 
-sigmoreB = struct() ; 
+sig = struct() ; 
 
-siglessA = struct() ; 
-siglessB = struct() ; 
+for sdx = 1:2
 
-for sdx = 1:3
+    sig.A.more.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) >= ...
+        prctile(surrA.(lennames{sdx}),100,3) ; 
+    sig.B.more.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) >= ...
+        prctile(surrB.(lennames{sdx}),100,3) ; 
 
-    sigmoreA.(lennames{sdx}) = spike_conn.subset1.(lennames{sdx}) >= ...
-        prctile(surrA.(lennames{sdx}),99.9,3) ; 
-    sigmoreB.(lennames{sdx}) = spike_conn.subset1.(lennames{sdx}) >= ...
-        prctile(surrB.(lennames{sdx}),99.9,3) ; 
-
-    siglessA.(lennames{sdx}) = spike_conn.subset1.(lennames{sdx}) <= ...
-        prctile(surrA.(lennames{sdx}),0.1,3) ; 
-    siglessB.(lennames{sdx}) = spike_conn.subset1.(lennames{sdx}) <= ...
-        prctile(surrB.(lennames{sdx}),0.1,3) ; 
+    sig.A.less.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) <= ...
+        prctile(surrA.(lennames{sdx}),0,3) ; 
+    sig.B.less.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) <= ...
+        prctile(surrB.(lennames{sdx}),0,3) ; 
 
 end
 
@@ -114,9 +157,10 @@ end
 
 CM = flipud(tempo(100)) ; 
 
-TL = tiledlayout(1,3)
+TL = tiledlayout(1,4) ;
+set(gcf,'Position',[100 100 1300 400])
 
-nt = nexttile()
+nt = nexttile() ;
 
 % from a different approach
 %
@@ -151,7 +195,10 @@ nt = nexttile()
 % rl.LineWidth = 2 ;
 % colormap(inferno(2))
 
-imsc_grid_comm(sigmoreA.long.*spike_conn.subset1.long,parc.ca(1:200),1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(1:17))
+sigmask = sig.B.more.longest ; 
+dat = spike_conn_ex.subset1.longest ; 
+
+imsc_grid_comm(sigmask.*dat,parc.ca(1:200),1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(1:17))
 axis square
 
 xticks([])
@@ -167,7 +214,7 @@ nt2 = nexttile() ;
 
 %longest_edges = dat >= longedge_thr ; 
 
-bb = get_blocky(sigmoreA.long,parc.ca(1:200))
+bb = get_blocky(sigmask,parc.ca(1:200))
 imsc_grid_comm(bb,1:17,...
     1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],[])
 set(gca,'TickLength',[ 0 0])
@@ -184,20 +231,35 @@ colormap(nt2,[ 1 1 1 ; flipud(tempo(100))])
 
 nexttile()
 
-histogram(nonzeros(tv(sigmoreA.long.*spike_conn.subset1.long)),...
+histogram(nonzeros(tv(sigmask.*dat)),...
     'Normalization','probability','FaceColor',CM(80,:),'EdgeAlpha',0)
 hold on
-histogram(nonzeros(tv(~sigmoreA.long.*spike_conn.subset1.long)),...
+histogram(nonzeros(tv(~sigmask.*dat)),...
     'Normalization','probability','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0)
 
-legend({'sig. edges' 'non-sig. edges'},'Location','northeastoutside')
+%legend({'sig. edges' 'non-sig. edges'},'Location','northeastoutside')
 
-xlabel('average event length')
+xlabel('average event count')
 ylabel('prob.')
 
 axis square
 
-set(gcf,'Position',[100 100 1000 400])
+nexttile()
+
+histogram(nonzeros(tv(sigmask.*meanfc)),...
+    'Normalization','probability','FaceColor',CM(80,:),'EdgeAlpha',0)
+hold on
+histogram(nonzeros(tv(~sigmask.*meanfc)),...
+    'Normalization','probability','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0)
+
+legend({'sig. edges' 'non-sig. edges'},'Location','northeastoutside')
+
+xlabel('correlation (FC)')
+ylabel('prob.')
+
+axis square
+
+
 
 %% 
 
@@ -245,12 +307,12 @@ rois.sph_c = [ tt_L.table(2:end,1:3) ; tt_R.table(2:end,1:3) ] ./ 255 ;
 % h('print',3,filename,'-nogui')
 % close(gcf)
 
-parc_plot_wcolorbar(sum(sigmoreA.long),surfss,annotm,...
-    [0 max(abs(sum(sigmoreA.long)))],CM,[100 100 600 1000])
+parc_plot_wcolorbar(sum(sig.B.more.longest),surfss,annotm,...
+    [0 max(sum(sig.B.more.longest))],CM,[100 100 600 1000])
 
 out_figdir = [ './reports/figures/figC/' ]
 mkdir(out_figdir)
-filename = [out_figdir '/longsig_cortex.pdf' ] ; 
+filename = [out_figdir '/longestsig_cortex.pdf' ] ; 
 print(filename,'-dpdf','-bestfit')
 close(gcf)
 
@@ -272,7 +334,7 @@ tiledlayout(2,3)
 for idx = 1:3
     nexttile()
 
-    scatter(tv(spike_conn.subset1.long),tv(prctile(surrA.long,thrs(idx),3)),...
+    scatter(tv(spike_conn_ex.subset1.longest),tv(prctile(surrA.longest,thrs(idx),3)),...
         'filled')
     
     axis square
@@ -292,7 +354,7 @@ end
 for idx = 1:3
     nexttile()
 
-    scatter(tv(spike_conn.subset1.long),tv(prctile(surrB.long,thrs(idx),3)),...
+    scatter(tv(spike_conn_ex.subset1.longest),tv(prctile(surrB.longest,thrs(idx),3)),...
         'filled')
     
     axis square
@@ -335,11 +397,16 @@ for idx = scannames
 end
 
 %%
+
 res.long = zeros(length(sublist.subset1),1) ; 
 res.notlong = zeros(length(sublist.subset1),1) ; 
 
 ident.long = zeros(length(sublist.subset1)) ; 
 ident.notlong = zeros(length(sublist.subset1)) ; 
+
+sigmask = sig.B.more.longest; 
+
+ll = load()
 
 for idx = 1:length(sublist.subset1)
 
@@ -350,34 +417,41 @@ for idx = 1:length(sublist.subset1)
     c1 = corr(fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes)) ; 
     c2 = corr(fmridat.REST1_LR(idx).ts(:,1:finfo.nnodes)) ; 
 
-    res.long(idx) = corr(c1(triu(sigmoreA.long,1)),c2(triu(sigmoreA.long,1)),'type','s') ; 
-    res.notlong(idx) = corr(c1(triu(~sigmoreA.long,1)),c2(triu(~sigmoreA.long,1)),'type','s') ; 
+    % res.long(idx) = corr(c1(triu(sigmask,1)),c2(triu(sigmask,1)),'type','s') ; 
+    % res.notlong(idx) = corr(c1(triu(~sigmask,1)),c2(triu(~sigmask,1)),'type','s') ; 
 
-    % res.long(idx) = IPN_ccc([ c1(triu(sigmoreA.long,1)) c2(triu(sigmoreA.long,1)) ]) ; 
-    % res.notlong(idx) = IPN_ccc([ c1(triu(~sigmoreA.long,1)) c2(triu(~sigmoreA.long,1)) ]) ; 
+    res.long(idx) = IPN_ccc([ c1(triu(sigmask,1)) c2(triu(sigmask,1)) ]) ; 
+    res.notlong(idx) = IPN_ccc([ c1(triu(~sigmask,1)) c2(triu(~sigmask,1)) ]) ; 
 
 end
 
-for idx = 1:length(sublist.subset1)
-    disp(idx)
-    c1 = corr(fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes)) ; 
-
-    for jdx = 1:length(sublist.subset1)
-        c2 = corr(fmridat.REST1_LR(jdx).ts(:,1:finfo.nnodes)) ; 
-
-        ident.long(idx,jdx) = corr(c1(triu(sigmoreA.long,1)),c2(triu(sigmoreA.long,1)),'type','s') ; 
-        ident.notlong(idx,jdx) = corr(c1(triu(~sigmoreA.long,1)),c2(triu(~sigmoreA.long,1)),'type','s') ; 
-    end
-end
-
-% [~,mi1] = max(ident.long,[],2) ; 
-% [~,mi2] = max(ident.notlong,[],2) ; 
-
-[~,ss1] = sort(ident.long,2,'descend') ; 
-identpos1 = arrayfun(@(i_) find(ss1(i_,:)==i_),1:size(ss,1)) ; 
-
-[~,ss2] = sort(ident.notlong,2,'descend') ; 
-identpos2 = arrayfun(@(i_) find(ss2(i_,:)==i_),1:size(ss,1)) ; 
+% doesn't work
+% for idx = 1:length(sublist.subset1)
+%     disp(idx)
+%     c1 = fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes) ; 
+%     c1ets = get_ets(c1) ; 
+% 
+% 
+% 
+%     for jdx = 1:length(sublist.subset1)
+%         c2 = corr(fmridat.REST1_LR(jdx).ts(:,1:finfo.nnodes)) ; 
+% 
+%         ident.long(idx,jdx) = corr(c1(triu(sigmask,1)),c2(triu(sigmask,1)),'type','p') ; 
+%         ident.notlong(idx,jdx) = corr(c1(triu(~sigmask,1)),c2(triu(~sigmask,1)),'type','p') ;
+%         % ident.long(idx,jdx) = IPN_ccc([ c1(triu(sigmask,1)) c2(triu(sigmask,1)) ]) ; 
+%         % ident.notlong(idx,jdx) = IPN_ccc([ c1(triu(~sigmask,1)) c2(triu(~sigmask,1)) ]) ; 
+%     end
+% end
+% 
+% % [~,mi1] = max(ident.long,[],2) ; 
+% % [~,mi2] = max(ident.notlong,[],2) ; 
+% %%
+% 
+% [~,ss1] = sort(ident.long,2,'descend') ; 
+% identpos1 = arrayfun(@(i_) find(ss1(i_,:)==i_),1:size(ss1,1)) ; 
+% 
+% [~,ss2] = sort(ident.notlong,2,'descend') ; 
+% identpos2 = arrayfun(@(i_) find(ss2(i_,:)==i_),1:size(ss1,1)) ; 
 
 dat = [ res.long,res.notlong ] ; 
 [~,~,tt_ci,tt_stats] = ttest(dat(:,1),dat(:,2)) ; 
@@ -397,11 +471,13 @@ end
 
 %% 
 
-tiledlayout(1,3)
+tiledlayout(1,2)
 
 nexttile()
 
-imsc_grid_comm(sigmoreA.long,parc.ca(1:200),1,[0.5 0.5 0.5 ],[0.5 0.5 0.5 ],[])
+sigmask = sig.B.more.longest ; 
+
+imsc_grid_comm(sigmask,parc.ca(1:200),1,[0.5 0.5 0.5 ],[0.5 0.5 0.5 ],[])
 axis square
 colormap([ [0.8 0.8 0.8 ] ; CM(30,:) ])
 xticks([])
@@ -409,8 +485,8 @@ yticks([])
 
 ne = finfo.nnodes * (finfo.nnodes-1) / 2 ; 
 legend({ ...
-    ['sig. long (' num2str(round(sum(tv(sigmoreA.long))./ne*100,0)) '% edges) '] ...
-    ['non-sig. long (' num2str(round(sum(tv(~sigmoreA.long))./ne*100,0)) '% edges)']}, ...
+    ['sig. long (' num2str(round(sum(tv(sigmask))./ne*100,0)) '% edges) '] ...
+    ['non-sig. long (' num2str(round(sum(tv(~sigmask))./ne*100,0)) '% edges)']}, ...
     'Location','southoutside')
 
 nexttile()
@@ -428,27 +504,27 @@ h.FaceColor = [0.8 0.8 0.8 ] ;
 h.FaceAlpha = 0.5 ; 
 xline(mean(res.notlong),'Color',[.8 .8 .8],'LineWidth',3)
 
-xlabel('test-retest correlation')
+xlabel('test-retest concordance')
 ylabel('count')
 
 hold off
 
 axis square
 
-nexttile()
-
-h,hh = fcn_boxpts([identpos1 identpos2]',...
-    [ ones(176,1) ; ones(176,1)+1 ],[CM(30,:) ; [.8 .8 .8] ],...
-    1,{'sig. long' 'non-sig. long'})
-set(gca, 'YDir','reverse')
-
-axis square
-
-ylabel('identifiability rank')
-
-set(gcf,'Color','w')
-orient(gcf,'landscape')
-set(gcf,'Position',[100 100 800 600])
+% nexttile()
+% 
+% h,hh = fcn_boxpts([identpos1 identpos2]',...
+%     [ ones(176,1) ; ones(176,1)+1 ],[CM(30,:) ; [.8 .8 .8] ],...
+%     1,{'sig. long' 'non-sig. long'})
+% set(gca, 'YDir','reverse')
+% 
+% axis square
+% 
+% ylabel('identifiability rank')
+% 
+% set(gcf,'Color','w')
+% orient(gcf,'landscape')
+% set(gcf,'Position',[100 100 800 600])
 
 %%
 

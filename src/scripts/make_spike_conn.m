@@ -6,7 +6,7 @@ close all
 
 %% preamble load data
 
-run('./config/config_hcp_sch200_1.m') 
+run('./config/config_hcp_sch200_2.m') 
 
 SPK_THR = 2.25 ; 
 
@@ -41,7 +41,6 @@ high_bin = 4 ;
 lowmedhigh_edges = [ 1 2 high_bin maxspk ] ; 
 
 spklen_names = {'short' 'inter' 'long'} ; 
-
 spike_conn = struct() ; 
 
 for sdx = subsets
@@ -83,8 +82,65 @@ end
 
 %% save the spike_conn
 
+if strcmp(imglob,'REST1_LR')
+    OUTSTR = 'sch200_2' ; 
+end
+
 filename = [ DD.PROC '/spk_conn_avg_' OUTSTR '.mat' ] ; 
 save(filename,'spike_conn','spklen_names','-v7.3')
+
+%% the longer spike conn
+% TODO: record each subject's super long individual matrix
+
+spklen_names_ex = {'longer' 'longest'} ; 
+spike_conn_ex =  struct() ; 
+lll = [8 14] ;
+
+spike_conn_ex_indiv = struct() ; 
+
+for sdx = subsets
+
+    for jdx = spklen_names_ex
+        spike_conn_ex.(sdx{1}).(jdx{1}) = zeros(finfo.nnodes) ;
+        spike_conn_ex_indiv.(sdx{1}).(jdx{1}) = zeros(255*254/2,length(sublist.(sdx{1}))) ; 
+    end
+
+    for idx = 1:length(sublist.(sdx{1}))
+    
+        disp(idx)
+    
+        spkmat = spike_mats.(sdx{1}){idx} ; 
+        
+        for ndx = 1:length(spklen_names_ex) 
+            nn = spklen_names_ex{ndx} ; 
+
+            tmpmat = mksq(count_spks(spkmat>=lll(ndx))) ; 
+
+            spike_conn_ex.(sdx{1}).(nn) = tmpmat(1:finfo.nnodes,1:finfo.nnodes) + ...
+                spike_conn_ex.(sdx{1}).(nn) ; 
+
+            spike_conn_ex_indiv.(sdx{1}).(jdx{1})(:,ndx) = tv(tmpmat) ; 
+
+        end
+
+    end   
+
+    % divide by n subjects
+    for ndx = 1:length(spklen_names_ex) 
+        nn = spklen_names_ex{ndx} ; 
+
+        spike_conn_ex.(sdx{1}).(nn) = spike_conn_ex.(sdx{1}).(nn) ./ length(sublist.(sdx{1})) ; 
+
+    end
+
+end
+
+filename = [ DD.PROC '/spk_conn_ex_avg_' OUTSTR '.mat' ] ; 
+save(filename,'spike_conn_ex','spklen_names_ex','-v7.3')
+
+filename = [ DD.PROC '/spk_conn_ex_indiv_' OUTSTR '.mat' ] ; 
+save(filename,'spike_conn_ex_indiv','spklen_names_ex','-v7.3')
+
 
 %%
 

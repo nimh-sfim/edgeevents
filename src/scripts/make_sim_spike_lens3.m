@@ -54,7 +54,7 @@ for idx = 1:nperms
     tmpets = get_ets(simts_nocov) ; 
     abv_thr = tmpets > SPK_THR ; 
     [spike_len_mat,spike_len_cell] = spk_lenmat(abv_thr) ;
-    simlens.nocov{idx} = uint8(cell2mat(spike_len_cell')) ; % keep memory low
+    simlens.nocov{idx} = countcount(cell2mat(spike_len_cell'),1:100) ; % keep memory low
 
     simvar.nocov{idx} = cellfun(@(x_) mad(x_,0),spike_len_cell) ; 
 
@@ -62,10 +62,12 @@ for idx = 1:nperms
     [c1,o1] = count_spks(dd==1) ; 
     [c2,o2] = count_spks(dd==2) ; 
     [c3,o3] = count_spks(dd==3) ; 
+    [c4,o4] = count_spks(spike_len_mat >= 8) ; 
+    [c5,o5] = count_spks(spike_len_mat >= 14) ; 
 
-    simmat.nocov{idx} = [ c1 ; c2 ; c3 ] ; 
-    simrssO.nocov{idx} = [get_rss(o1) get_rss(o2) get_rss(o3) ] ; 
-    simrssA.nocov{idx} = [get_rss(dd==1) get_rss(dd==2) get_rss(dd==3) ] ;
+    simmat.nocov{idx} = [ c1 ; c2 ; c3 ; c4 ; c5 ] ; 
+    simrssO.nocov{idx} = [sum(o1,2) sum(o2,2) sum(o3,2) sum(o4,2) sum(o5,2) ] ; 
+    simrssA.nocov{idx} = [sum(dd==1,2) sum(dd==2,2) sum(dd==3,2) ] ;
     
     % keep cov
 
@@ -74,7 +76,7 @@ for idx = 1:nperms
     tmpets = get_ets(simts_keepcov) ; 
     abv_thr = tmpets > SPK_THR ; 
     [spike_len_mat,spike_len_cell] = spk_lenmat(abv_thr) ;
-    simlens.keepcov{idx} = uint8(cell2mat(spike_len_cell')) ; % keep memory low
+    simlens.keepcov{idx} = countcount(cell2mat(spike_len_cell'),1:100) ; % keep memory low ; % keep memory low
 
     simvar.keepcov{idx} = cellfun(@(x_) mad(x_,0),spike_len_cell) ; 
 
@@ -82,36 +84,13 @@ for idx = 1:nperms
     [c1,o1] = count_spks(dd==1) ; 
     [c2,o2] = count_spks(dd==2) ; 
     [c3,o3] = count_spks(dd==3) ; 
+    [c4,o4] = count_spks(spike_len_mat >= 8) ; 
+    [c5,o5] = count_spks(spike_len_mat >= 14) ; 
 
-    simmat.keepcov{idx} = [ c1 ; c2 ; c3 ] ; 
-    simrssO.keepcov{idx} = [get_rss(o1) get_rss(o2) get_rss(o3) ] ; 
-    simrssA.keepcov{idx} = [get_rss(dd==1) get_rss(dd==2) get_rss(dd==3) ] ;
+    simmat.keepcov{idx} = [ c1 ; c2 ; c3 ; c4 ; c5 ] ; 
+    simrssO.keepcov{idx} = [sum(o1,2) sum(o2,2) sum(o3,2) sum(o4,2) sum(o5,2)] ; 
+    simrssA.keepcov{idx} = [sum(dd==1,2) sum(dd==2,2) sum(dd==3,2) ] ;
     
-    % %% randcov 
-    % 
-    % % [~,ev] = eig(cov(ts)) ; 
-    % % [simts_randcov] = simulate_BOLD_timecourse_func_v3(1200,0.72,0.72,...
-    % %     nearestSPD( gallery('randcorr',diag(ev)) ) ,mean((abs(fft(zscore(ts))).^2),2)) ; 
-    % 
-    % [simts_randcov] = simulate_BOLD_timecourse_func_v3(1200,0.72,0.72,...
-    %     nearestSPD( hqs(cov(ts)) ) ,mean((abs(fft(zscore(ts))).^2),2)) ; 
-    % 
-    % tmpets = get_ets(simts_randcov) ; 
-    % abv_thr = tmpets > SPK_THR ; 
-    % [spike_len_mat,spike_len_cell] = spk_lenmat(abv_thr) ; 
-    % 
-    % simlens.randcov{idx} = uint8(cell2mat(spike_len_cell')) ; 
-    % 
-    % dd = discretize(spike_len_mat,lowmedhigh_edges) ;
-    % [c1,o1] = count_spks(dd==1) ; 
-    % [c2,o2] = count_spks(dd==2) ; 
-    % [c3,o3] = count_spks(dd==3) ; 
-    % 
-    % simmat.randcov{idx} = [ c1 ; c2 ; c3 ] ; 
-    % simrssO.randcov{idx} = [get_rss(o1) get_rss(o2) get_rss(o3) ] ; 
-    % simrssA.randcov{idx} = [get_rss(dd==1) get_rss(dd==2) get_rss(dd==3) ] ;
-    % 
-
 end
 
 % save it
