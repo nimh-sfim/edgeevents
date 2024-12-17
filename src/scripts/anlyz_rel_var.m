@@ -50,6 +50,52 @@ end
 filename = [ DD.PROC '/spk_var_' OUTSTR '.mat' ] ; 
 save(filename,'spike_var','-v7.3')
 
+%% meas the time between spikes
+
+spklen_names = {'short' 'inter' 'long'} ; 
+spk_fano = struct() ; 
+
+for sdx = subsets
+
+    for ndx = 1:3
+        nn = spklen_names{ndx} ; 
+        spk_fano.(sdx{1}).means.(nn) = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
+        spk_fano.(sdx{1}).vars.(nn) = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
+    end
+
+    for idx = 1:length(sublist.(sdx{1}))
+    
+        disp([ num2str(idx) '-' num2str(length(sublist.(sdx{1}))) ])  ; 
+    
+        sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
+    
+        filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
+        readdat = load(filename,'spike_len_mat') ; 
+    
+        dd = discretize( readdat.spike_len_mat(:,cortmask), lowmedhigh_edges) ; 
+        dd(isnan(dd)) = 0 ;
+
+        for ndx = 1:3
+            nn = spklen_names{ndx} ; 
+
+            oo = arrayfun(@(i_) get_contact_times(~(dd(:,i_)==ndx)),1:size(dd,2),'UniformOutput',false) ; 
+
+            spk_fano.(sdx{1}).means.(nn)(:,:,idx) = mksq(cellfun(@mean,oo)) ; 
+            spk_fano.(sdx{1}).vars.(nn)(:,:,idx) = mksq(cellfun(@var,oo)) ; 
+        end
+
+    end
+end
+
+%%
+
+filename = [ DD.PROC '/spk_fano_' OUTSTR '.mat' ] ; 
+save(filename,'spk_fano','-v7.3')
+
+%% plot fano stuff?
+
+
+
 %% FC vs spike length variability
 
 tiledlayout(1,2,'TileSpacing','tight')
@@ -123,7 +169,7 @@ xbins = prctile(xdat,0:5:100) ; % just use simple percentiles, all bins have
 
 %% lets to a lil testing on the plot
 
-grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii')) ; 
+%grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii')) ; 
 perminds = load('./data/external/schaefer-yeo7_200node_permuted_inds.mat') ; 
 
 
@@ -303,7 +349,11 @@ filename = [out_figdir '/spike_zz_mat.pdf' ] ;
 print(filename,'-dpdf','-bestfit')
 close(gcf)
 
-%% 
+%% sys
+
+tiledlayout(1,2)
+
+nexttile()
 
 g1sort = [ 13 17 14 8 16 11 7 15 12 10 1 3 6 9 2 4 5 ] ; 
 
@@ -311,9 +361,9 @@ remap_nodes = remaplabs(parc.ca(1:200),g1sort,1:17) ;
 [datplot_ca,datplot_sinds] = sort(remap_nodes) ;  
 
 cmapremap = remaplabs(1:17,g1sort,1:17) ; 
-cmap = get_nice_yeo_cmap('grad1') ; 
-cmap = cmap(cmapremap,:) ; 
-
+%cmap = get_nice_yeo_cmap('grad1') ; 
+%cmap = cmap(cmapremap,:) ; 
+cmap = viridis(17) ; 
 
 % get the within-community edge vals
 [uu,vv] = find(triu(ones(finfo.nnodes),1)) ; 
@@ -335,10 +385,39 @@ set(gca,'TickLabelInterpreter','none')
 axis square
 
 title('within-system edge values')
+ylabel('within bin z-score')
+
+
+nexttile()
+
+[aa,bb,cc] = perm_mat_anova1(mksq(eVar),remap_nodes,1000) ; 
+
+mm = multcompare(cc,'Alpha',0.001,'Display','off') ; 
+%mmm = mksq(mm(:,6)) ; 
+trilm = logical(tril(ones(17),-1)) ;
+mmm = zeros(17) ; 
+mmm(trilm) = mm(:,6) ;
+mmm = mmm + mmm' ; 
+
+h = imsc_grid_comm(mmm,1:17,0.5,[1 1 1],[1 1 1],parc.names(g1sort)) ; 
+axis square
+sigthr = 1/(17*16/2) ; 
+tmp = (mmm <= sigthr)+.5 ; 
+tmp(~~eye(size(tmp))) = 0 ; 
+h.AlphaData = tmp ;
+
+cb = colorbar() ; 
+cb.Label.String = 'p-value' ; 
+
+title("Tukey's HSD")
+
 
 set(gcf,'Position',[100 100 600 600])
 set(gcf,'Color','w')
 orient(gcf,'landscape')
+
+
+%%
 
 out_figdir = [ './reports/figures/figB/' ]
 orient(gcf,'landscape')
@@ -485,6 +564,60 @@ close(gcf)
 % 
 % h = viz_conn_glassbrain(mostvar_sqr,fccol(mostvar_ind,:) ,rois) ; 
 
+%% find significant blocks
+
+zzsig = struct() ; 
+zznames = {'mostvar' 'leastvar' };
+zzdat = cell(2,1) ; 
+zzdat{1} = (mostvar_sqr+mostvar_sqr') ; 
+zzdat{2} = (leastvar_sqr+leastvar_sqr') ;
+
+for sdx = 1:2
+
+    mat = zzdat{sdx} ; 
+    bb = get_blocky(mat,parc.ca(1:200)) ; 
+    
+    nperm = 1e4 ; 
+    nblocks = size(bb,1) ; 
+    permbb = nan(nblocks,nblocks,nperm) ; 
+    rng(42)
+    for idx = 1:nperm
+        if ~mod(idx,1000) ; disp([num2str(idx/nperm*100) '%' ]) ; end
+        ii = perminds.PERMS(:,randi(5e4)) ; 
+        permbb(:,:,idx) = get_blocky(mat(ii,ii),parc.ca(1:200)) ; 
+    end
+    
+    phigh = sum(bb<=permbb,3)./nperm ; 
+    plow = sum(bb>=permbb,3)./nperm ;
+    
+    mmask = logical(triu(ones(17),0)) ; 
+    
+    tmp = fdr_bh(phigh(mmask),0.05) ; 
+    tmpblocky = zeros(17) ; 
+    tmpblocky(mmask) = tmp ; 
+    
+    zzsig.(zznames{sdx}).high = tmpblocky ;
+
+    tmp = fdr_bh(plow(mmask),0.05) ; 
+    tmpblocky = zeros(17) ; 
+    tmpblocky(mmask) = tmp ; 
+    
+    zzsig.(zznames{sdx}).low = tmpblocky ;
+
+end
+
+[uu,vv] = find(zzsig.mostvar.high) ; 
+disp('sig connections in mostvar:')
+disp([ parc.names(uu) parc.names(vv) ] )
+% sig connections in mostvar:
+%     {'ContA'    }    {'VisCent'}
+%     {'DorsAttnA'}    {'VisCent'}
+
+%% also boxplot for the mostvar edges
+
+ss = sum(mostvar_sqr + mostvar_sqr') ; 
+ca = parc.ca(1:200) ; 
+
 %% 
 
 binedges = [ [xbins(17) xbins(18)]; ...
@@ -516,10 +649,47 @@ for idx = 1:3
 
 end
 
-%%
+%% nuthin here
 
-
-    be = binedges(2,:) ; 
-
-    edgesinbin = fcvec>=be(1) & fcvec<be(2) ; 
-    
+% binedges = [ 
+%     [xbins(15) xbins(16)] ; ...
+%     [xbins(16) xbins(17)] ; ...
+%     [xbins(17) xbins(18)] ; ...
+%     [xbins(18) xbins(19)] ; ...
+%     [xbins(19) xbins(20)] ] ;
+% 
+% fcvec = tv(meanfc) ; 
+% 
+% % hh = zeros(finfo.nnodes,1) ; 
+% % hh(101:200) = 1 ; 
+% hh = zeros(finfo.nnodes,finfo.nnodes) ; 
+% hh(1:100,1:100) = 1 ; 
+% hh(101:200,101:200) = 1 ; 
+% 
+% for idx = 1:5
+% 
+%     be = binedges(idx,:) ; 
+% 
+%     edgesinbin = fcvec>=be(1) & fcvec<be(2) ; 
+% 
+%     eVarColors = CM(discretize(eVar,linspace(min(eVar),max(eVar),100)),:) ; 
+% 
+%     tmp = (mksq(edgesinbin.*eVar)) ; 
+% 
+%     % imsc_grid_comm(tmp,parc.ca(1:200))
+%     % title(idx)
+%     % axis square
+% 
+%     % parc_plot(surfss,annotm,'schaefer200-yeo17',...
+%     %     sum(tmp),'valRange',[-30 30],...
+%     %     'cmap',parula(100),'viewcMap',0,'newFig',0,'viewStr','all')    
+%     % waitforbuttonpress
+% 
+%     %fcn_boxpts([sum(tmp.*(hh==1)) sum(tmp.*(hh==0))]',[ ones(200,1) ; ones(200,1).*2])
+%     parallelcoords([sum(tmp.*(hh==1)) ; sum(tmp.*(hh==0))]')
+%     title(idx)
+%     waitforbuttonpress
+%     clf
+% 
+% end
+% 

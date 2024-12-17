@@ -152,6 +152,10 @@ for sdx = 1:2
 
 end
 
+%% save the sig info
+
+filename = [ DD.PROC '/spk_longestedge_sigmask_' OUTSTR '.mat' ] ; 
+save(filename,'sig','-v7.3')
 
 %% sig test 
 
@@ -307,8 +311,8 @@ rois.sph_c = [ tt_L.table(2:end,1:3) ; tt_R.table(2:end,1:3) ] ./ 255 ;
 % h('print',3,filename,'-nogui')
 % close(gcf)
 
-parc_plot_wcolorbar(sum(sig.B.more.longest),surfss,annotm,...
-    [0 max(sum(sig.B.more.longest))],CM,[100 100 600 1000])
+parc_plot_wcolorbar(sum(sigmask),surfss,annotm,...
+    [0 max(sum(sigmask))],CM,[100 100 600 1000])
 
 out_figdir = [ './reports/figures/figC/' ]
 mkdir(out_figdir)
@@ -406,7 +410,7 @@ ident.notlong = zeros(length(sublist.subset1)) ;
 
 sigmask = sig.B.more.longest; 
 
-ll = load()
+%ll = load()
 
 for idx = 1:length(sublist.subset1)
 
@@ -453,6 +457,45 @@ end
 % [~,ss2] = sort(ident.notlong,2,'descend') ; 
 % identpos2 = arrayfun(@(i_) find(ss2(i_,:)==i_),1:size(ss1,1)) ; 
 
+%%
+
+% filename = [ DD.PROC '/spk_conn_ex_indiv_' OUTSTR '.mat' ] ; 
+% ll1 = load(filename) ; 
+% 
+% filename = [ DD.PROC '/spk_conn_ex_indiv_' OUTSTR '_2.mat' ] ; 
+% ll2 = load(filename) ; 
+
+%%
+
+for idx = 1:length(sublist.subset1)
+    disp(idx)
+    c1 = corr(fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes)) ; 
+
+    for jdx = 1:length(sublist.subset1)
+        c2 = corr(fmridat.REST1_LR(jdx).ts(:,1:finfo.nnodes)) ; 
+
+        ident.long(idx,jdx) = corr(c1(triu(sigmask,1)),c2(triu(sigmask,1)),'type','p') ; 
+        ident.notlong(idx,jdx) = corr(c1(triu(~sigmask,1)),c2(triu(~sigmask,1)),'type','p') ;
+        % ident.long(idx,jdx) = IPN_ccc([ c1(triu(sigmask,1)) c2(triu(sigmask,1)) ]) ; 
+        % ident.notlong(idx,jdx) = IPN_ccc([ c1(triu(~sigmask,1)) c2(triu(~sigmask,1)) ]) ; 
+    end
+end
+
+[~,mi1] = max(ident.long,[],2) ; 
+[~,mi2] = max(ident.notlong,[],2) ; 
+
+
+%%
+
+[~,ss1] = sort(ident.long,2,'descend') ; 
+identpos1 = arrayfun(@(i_) find(ss1(i_,:)==i_),1:size(ss1,1)) ; 
+
+[~,ss2] = sort(ident.notlong,2,'descend') ; 
+identpos2 = arrayfun(@(i_) find(ss2(i_,:)==i_),1:size(ss1,1)) ; 
+
+
+%%
+
 dat = [ res.long,res.notlong ] ; 
 [~,~,tt_ci,tt_stats] = ttest(dat(:,1),dat(:,2)) ; 
 
@@ -467,7 +510,7 @@ for idx = 1:nperms
     permt(idx) = ss.tstat ; 
 end
 
-[rr_p,~,rr_stats] = ranksum(identpos1,identpos2) ;
+%[rr_p,~,rr_stats] = ranksum(identpos1,identpos2) ;
 
 %% 
 
@@ -533,5 +576,18 @@ mkdir(out_figdir)
 filename = [out_figdir '/longest_vs_nonlongest_stats.pdf' ] ; 
 print(filename,'-dpdf','-vector','-bestfit')
 close(gcf)
+
+%% does knowing the fc annnnd the long spikes help out??
+
+
+filename = [ DD.PROC '/spk_conn_indiv_' OUTSTR '.mat' ] ; 
+load(filename)
+
+filename = [ DD.PROC '/fc_conn_indiv_' OUTSTR '.mat' ] ; 
+load(filename)
+
+%%
+
+
 
 
