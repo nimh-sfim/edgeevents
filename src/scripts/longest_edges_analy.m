@@ -205,7 +205,6 @@ dat = spike_conn_ex.subset1.longest ;
 imsc_grid_comm(sigmask.*dat,parc.ca(1:200),1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(1:17))
 axis square
 
-xticks([])
 cb = colorbar() ; 
 cb.Label.String = 'average event count' ; 
 colormap([ 1 1 1 ; CM])
@@ -213,6 +212,8 @@ tmp = cb.TickLabels ;
 cb.TickLabels = { 'non sig.' tmp{2:end} } ; 
 cc = clim() ;  
 clim(cc) ;
+xticks([])
+
 
 nt2 = nexttile() ;
 
@@ -236,30 +237,30 @@ colormap(nt2,[ 1 1 1 ; flipud(tempo(100))])
 nexttile()
 
 histogram(nonzeros(tv(sigmask.*dat)),...
-    'Normalization','probability','FaceColor',CM(80,:),'EdgeAlpha',0)
+    'Normalization','count','FaceColor',CM(80,:),'EdgeAlpha',0,'BinWidth',0.025)
 hold on
 histogram(nonzeros(tv(~sigmask.*dat)),...
-    'Normalization','probability','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0)
+    'Normalization','count','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0,'BinWidth',0.025)
 
 %legend({'sig. edges' 'non-sig. edges'},'Location','northeastoutside')
 
 xlabel('average event count')
-ylabel('prob.')
+ylabel('num. edges')
 
 axis square
 
 nexttile()
 
 histogram(nonzeros(tv(sigmask.*meanfc)),...
-    'Normalization','probability','FaceColor',CM(80,:),'EdgeAlpha',0)
+    'Normalization','count','FaceColor',CM(80,:),'EdgeAlpha',0,'BinWidth',0.025)
 hold on
 histogram(nonzeros(tv(~sigmask.*meanfc)),...
-    'Normalization','probability','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0)
+    'Normalization','count','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0,'BinWidth',0.025)
 
 legend({'sig. edges' 'non-sig. edges'},'Location','northeastoutside')
 
 xlabel('correlation (FC)')
-ylabel('prob.')
+ylabel('num. edges')
 
 axis square
 
@@ -328,6 +329,63 @@ close(gcf)
 % 
 % set(gcf,'Color','w')
 
+%% breakdown by system
+
+g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
+
+remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
+%remap_colors = remaplabs(1:17,g1sort,1:17) ; 
+% cmap = get_nice_yeo_cmap('grad1') ; 
+cmap = viridis(17) ; 
+
+
+fcn_boxpts(sum(sigmask,2),...
+    remap_labs,cmap,...
+    0,parc.names(g1sort))
+%([0 8.5])
+
+%ylim([ 0 .1])
+axis square
+ylabel('degree')
+
+%%
+
+set(gca, 'TickLabelInterpreter', 'none')
+set(gcf,'Position',[100 100 1300 400])
+
+out_figdir = [ './reports/figures/figC/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/longest_spike_by_sys.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+%% some stats
+
+% function [anovastuff,tbl,stats] = perm_mat_anova1(mat,labs,nperms)
+%[aa,bb,cc] = perm_mat_anova1(sigmask,remap_labs,100) ; 
+np = 10000 ; 
+pres = nan(np,1) ; 
+for idx = 1:np 
+    [~,tt,~] = anova1(sum(sigmask),remap_labs(randperm(length(remap_labs))),'off') ; 
+    pres(idx) = tt{2,5} ; 
+end
+% emp
+[~,ttt,~] = anova1(sum(sigmask),remap_labs,'off') ; 
+  % ttt
+  %   {'Source'}    {'SS'        }    {'df' }    {'MS'        }    {'F'       }
+  %   {'Groups'}    {[9.3836e+04]}    {[ 16]}    {[5.8647e+03]}    {[ 22.5591]}
+  %   {'Error' }    {[4.7575e+04]}    {[183]}    {[  259.9720]}    {0×0 double}
+  %   {'Total' }    {[1.4141e+05]}    {[199]}    {0×0 double  }    {0×0 double}
+  % 
+  % Column 6
+  % 
+  %   {'Prob>F'    }
+  %   {[4.3445e-35]}
+  %   {0×0 double  }
+  %   {0×0 double  }
+
+(sum(pres>=ttt{2,5})+1)/(np+1)
+
 %% also make the plot with the surrogate data that keeps cov
 
 
@@ -387,7 +445,8 @@ filename = [out_figdir '/longest_keepcov_scatters.pdf' ] ;
 print(filename,'-dpdf','-vector','-bestfit')
 close(gcf)
 
-%% use the long edges for identifiability
+
+%% load time series
 
 scannames = {'REST1_LR' 'REST1_RL'} ; 
 
@@ -425,11 +484,34 @@ for idx = 1:length(sublist.subset1)
     % res.notlong(idx) = corr(c1(triu(~sigmask,1)),c2(triu(~sigmask,1)),'type','s') ; 
 
     res.long(idx) = IPN_ccc([ c1(triu(sigmask,1)) c2(triu(sigmask,1)) ]) ; 
-    res.notlong(idx) = IPN_ccc([ c1(triu(~sigmask,1)) c2(triu(~sigmask,1)) ]) ; 
+    %res.notlong(idx) = IPN_ccc([ c1(triu(~sigmask,1)) c2(triu(~sigmask,1)) ]) ; 
 
+    nperm=100 ; 
+    tmpres = nan(nperm,1) ; 
+    for jdx = 1:nperm
+        % shuffmask = ~~randomizer_bin_und(sigmask,100) ; 
+        shuffmask = randmio_und(sigmask,5) ; 
+        tmpres(jdx) = IPN_ccc([ c1(triu(shuffmask,1)) c2(triu(shuffmask,1)) ]) ; 
+    end
+    res.notlong(idx) = mean(tmpres,'omitnan') ;
 end
 
-% doesn't work
+[~,tt_p,tt_ci,tt_stats] = ttest(res.long(:),res.notlong(:)) ; 
+
+%%
+
+rng(42)
+fcn_boxpts([res.long(:) ; res.notlong(:)], ...
+    [ones(176,1) ; ones(176,1).*2],[CM(80,:) ; 0.5 0.5 0.5 ],1,{'sig.','non-sig'})
+ylabel("Lin's concordance")
+
+out_figdir = [ './reports/figures/figC/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/longest_testretest.pdf' ] ; 
+print(filename,'-dpdf','-vector','-bestfit')
+close(gcf)
+
+%% doesn't work
 % for idx = 1:length(sublist.subset1)
 %     disp(idx)
 %     c1 = fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes) ; 
@@ -467,22 +549,22 @@ end
 
 %%
 
-for idx = 1:length(sublist.subset1)
-    disp(idx)
-    c1 = corr(fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes)) ; 
-
-    for jdx = 1:length(sublist.subset1)
-        c2 = corr(fmridat.REST1_LR(jdx).ts(:,1:finfo.nnodes)) ; 
-
-        ident.long(idx,jdx) = corr(c1(triu(sigmask,1)),c2(triu(sigmask,1)),'type','p') ; 
-        ident.notlong(idx,jdx) = corr(c1(triu(~sigmask,1)),c2(triu(~sigmask,1)),'type','p') ;
-        % ident.long(idx,jdx) = IPN_ccc([ c1(triu(sigmask,1)) c2(triu(sigmask,1)) ]) ; 
-        % ident.notlong(idx,jdx) = IPN_ccc([ c1(triu(~sigmask,1)) c2(triu(~sigmask,1)) ]) ; 
-    end
-end
-
-[~,mi1] = max(ident.long,[],2) ; 
-[~,mi2] = max(ident.notlong,[],2) ; 
+% for idx = 1:length(sublist.subset1)
+%     disp(idx)
+%     c1 = corr(fmridat.REST1_RL(idx).ts(:,1:finfo.nnodes)) ; 
+% 
+%     for jdx = 1:length(sublist.subset1)
+%         c2 = corr(fmridat.REST1_LR(jdx).ts(:,1:finfo.nnodes)) ; 
+% 
+%         ident.long(idx,jdx) = corr(c1(triu(sigmask,1)),c2(triu(sigmask,1)),'type','p') ; 
+%         ident.notlong(idx,jdx) = corr(c1(triu(~sigmask,1)),c2(triu(~sigmask,1)),'type','p') ;
+%         % ident.long(idx,jdx) = IPN_ccc([ c1(triu(sigmask,1)) c2(triu(sigmask,1)) ]) ; 
+%         % ident.notlong(idx,jdx) = IPN_ccc([ c1(triu(~sigmask,1)) c2(triu(~sigmask,1)) ]) ; 
+%     end
+% end
+% 
+% [~,mi1] = max(ident.long,[],2) ; 
+% [~,mi2] = max(ident.notlong,[],2) ; 
 
 
 %%

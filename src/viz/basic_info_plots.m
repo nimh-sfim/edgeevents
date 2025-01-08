@@ -30,6 +30,7 @@ cc3(ets1>2.25) = 1 ;
 
 %%
 
+
 tiledlayout(5,1)
 nexttile()
 
@@ -154,27 +155,48 @@ timevec = 1:150 ;
 trvec = timevec.*0.72 ; 
 
 %%
-
+ 
 miniets = flipud(ets(timevec,442:452))+((1:11)) ; 
 
-for ss = 1:size(dat,2)
+% dat = miniets ; 
+hold off
+for idx = 1:size(miniets,2)
     % plot(-42:1:42,dat(:,idx),'LineWidth',2)
-    x = (-42:1:42) ; 
-    y = dat(:,ss)' ; 
-    z = zeros(size(dat(:,ss)))' ; 
-    c = gradient(dat(:,ss))' ; 
+    x = 1:size(miniets,1) ; 
+    y = miniets(:,idx)' ; 
+    z = zeros(size(y)) ; 
+    % c = (miniets(:,idx))' ; 
+    c = single(miniets(:,idx)>(2.25+idx))' ; 
     surface([x;x],[y;y],[z;z],[c;c],...
-        'FaceColor','no','EdgeColor','interp','LineWidth',2,'EdgeAlpha',0.2)
-    hold on
+        'FaceColor','no','EdgeColor','interp','LineWidth',2,'EdgeAlpha',1)
 end
+hold off
+colormap([0.5 0.5 0.5; 1 0 0 ])
 
-for idx = 1:11
-    plot(miniets(:,idx))
-    hold on
-   
-    ab = miniets(:,idx)>(2.25+idx) ; 
-    timevec = nan(150,1) ; 
-    timevec(ab) = find(ab) ; 
-    plot(timevec,)
+% for idx = 1:11
+%     plot(miniets(:,idx),'Color',[0.2 0.2 0.2])
+%     hold on
+% 
+%     ab = miniets(:,idx)>(2.25+idx) ; 
+%     tvec = nan(150,1) ; 
+%     tvec(ab) = miniets(ab,idx) ; 
+%     plot(timevec,tvec,'Color','r','LineWidth',2,'LineStyle',':')
+% 
+% end
 
-end
+xticks([])
+yticks([])
+
+out_figdir = [ './reports/figures/figInfo/' ]
+orient(gcf,'landscape')
+mkdir(out_figdir)
+filename = [out_figdir '/spk_later.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+%% 80 percentile
+
+m1 = prctile(tv(spike_conn.subset1.long),79.9) ; 
+m2 = prctile(tv(spike_conn.subset1.long),80.1) ; 
+
+m3 = (spike_conn.subset1.long>=m1) & (spike_conn.subset1.long<=m2)

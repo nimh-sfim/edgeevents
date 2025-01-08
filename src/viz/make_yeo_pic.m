@@ -260,3 +260,12 @@ mkdir(out_figdir)
 filename = [out_figdir '/yeo_comms_names.pdf' ] ; 
 print(filename,'-dpdf','-vector')
 close(gcf)
+
+%% load node names
+
+%nn = annotm('schaefer200-yeo17').combo_names ; 
+
+find(~cellfun(@isempty,regexpi(annotm('schaefer200-yeo17').combo_names,'parop')))
+
+
+

@@ -154,14 +154,6 @@ filename = [out_figdir '/slope_subjects_stacked.pdf' ] ;
 print(filename,'-dpdf','-bestfit')
 close(gcf)
 
-
-
-%% do some stat testing
-
-% load up the nulls
-% filename = [DD.PROC '/surrogate_' OUTSTR '_' , num2str(SPK_THR) , '_spkrss.mat'] ; 
-% load(filename)
-
 %% bootstrap the mean slope, also bootstrap the regression coefs
 
 nboot = 5000 ; 
@@ -221,9 +213,10 @@ cm = plasma(3) ;
 
 tiledlayout(3,2,"TileIndexing","columnmajor")
 
+sdx = { 'subset1' } ; 
+
 aa = arrayfun(@(i_) regress((mean(spike_slope.(sdx{1}).rss_o(:,:,i_)))', [ones(finfo.ntp-edgetrim,1) (1:finfo.ntp-edgetrim)']),1:3,'UniformOutput',false) ; 
 
-sdx = { 'subset1' } ; 
 
 for idx = 1:3
 
@@ -277,7 +270,39 @@ for idx = 1:3
         'EdgeAlpha',0,'BinWidth',bw,'FaceColor',cm(idx,:),'FaceAlpha',0.5,...
         'Normalization','count')
     xline(meanslopes(idx),'LineWidth',2,'Color',cm(idx,:))
+
+    meanslopes(idx)
+    prctile(spike_slope.(sdx{1}).boot_slopes(idx,:),[2.5 97.5])
 end
+
+% ans =
+% 
+%     0.0132
+% 
+% 
+% ans =
+% 
+%     0.0110    0.0154
+% 
+% 
+% ans =
+% 
+%     0.0544
+% 
+% 
+% ans =
+% 
+%     0.0461    0.0628
+% 
+% 
+% ans =
+% 
+%     0.0654
+% 
+% 
+% ans =
+% 
+%     0.0547    0.0764
 
 xlabel('slope')
 ylabel('bootstrap count')
@@ -290,5 +315,68 @@ set(gcf,'Color','w')
 out_figdir = [ './reports/figures/figE/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/slope_analy_w_hist.pdf' ] ; 
+print(filename,'-dpdf','-bestfit')
+close(gcf)
+
+%% do some null stuff 
+
+% load up the nulls
+filename = [DD.PROC '/surrogate3_' OUTSTR '_' , num2str(SPK_THR) , '_spkrss.mat'] ; 
+load(filename)
+
+%% get the slope of the null data
+
+nullslopes = zeros(1000,5) ; 
+rng(42)
+for idx = 1:1000
+    disp(idx)
+
+    % pick a random 176
+    rp = randsample(1000,176,'false') ; 
+    tmpslopes = zeros(176,5) ; 
+
+    for jdx = 1:176
+
+        dat = simrssO.keepcov{rp(jdx)} ; 
+        aa = arrayfun(@(i_) ...
+            regress(dat(:,i_), ...
+            [ones(size(dat,1),1)  (1:size(dat,1))']), ...
+            1:5,'UniformOutput',false) ;
+        tmpslopes(jdx,:) = cellfun(@(i_) i_(2),aa) ; 
+
+    end
+
+    nullslopes(idx,:) = mean(tmpslopes) ; 
+
+end
+
+%%
+
+cm = plasma(3) ; 
+
+tiledlayout(1,3)
+spklen_names = {'short' 'inter' 'long'} ; 
+
+for idx = 1:3
+    nexttile
+    histogram(nullslopes(:,idx),'FaceColor',cm(idx,:),'FaceAlpha',0.5,...
+        'Normalization','count')
+
+    xline(meanslopes(idx),'LineWidth',2,'Color',cm(idx,:))
+
+    % sum(nullslopes(:,idx)>=meanslopes(idx))./1000 
+
+    title(spklen_names{idx})
+
+end
+
+set(gcf,'Position',[100 100 800 200])
+set(gcf,'Color','w')
+
+%%
+
+out_figdir = [ './reports/figures/figE/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/slopenulls_w_hist.pdf' ] ; 
 print(filename,'-dpdf','-bestfit')
 close(gcf)

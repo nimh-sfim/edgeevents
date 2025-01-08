@@ -526,6 +526,7 @@ for idx = 1:length(stimLenSweep)
         [~,cnts2] = pad_conv(nts2,hrf,100) ; 
 
         % resample to fmriHZ
+        
         fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
         fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
 

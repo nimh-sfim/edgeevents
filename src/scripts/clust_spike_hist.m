@@ -16,7 +16,8 @@ spk_bins = [1:20 100] ;
 
 %% now read in spike lengths to make a histogram of lengths
 
-subsets = {'subset1' 'subset2'} ; 
+% subsets = {'subset1' 'subset2'} ; 
+subsets = {'subset1'} ; 
 
 
 for sdx = subsets
@@ -29,7 +30,7 @@ for sdx = subsets
     
         sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
     
-        filename = [DD.PROC '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
+        filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
         readdat = load(filename,'spike_len_mat') ; 
     
         dd = discretize(readdat.spike_len_mat,spk_bins)  ;
@@ -112,6 +113,8 @@ indat1 = spk_avghist.nmean1.subset1(1:20,cortmask)' ;
 indat2 = spk_avghist.nmean1.subset2(1:20,cortmask)';
 
 nodesz = sqrt(2* size(indat1,1)+0.25)-0.5+1 ; 
+
+%%
 
 % mykm = @(k_)(kmeans(indat1, k_,...
 %     'Replicates',5,'Distance','sqeuclidean'));
