@@ -287,7 +287,7 @@ end
 %%
 
 parc_plot_wcolorbar(mean(res),surfss,annotm,...
-    [min(mean(res)) max(mean(res))],viridis(50),[100 100 600 1000])
+    [min(mean(res)) max(mean(res))],greens(50),[100 100 600 1000])
 
 out_figdir = [ './reports/figures/figS/' ]
 mkdir(out_figdir)
@@ -370,5 +370,60 @@ ll = load('./data/interim/ts_autocorr.mat') ;
 autonodes =  mean(ll.acfs.subset1.map,2) ; 
 autoedges = autonodes + autonodes' ; 
 
+cbvnodes = squeeze(niftiread('./data/external/schaefer200_cbv-32k.pscalar.nii')) ; 
+cbvedges = cbvnodes + cbvnodes' ; 
 
+lll = load('./data/interim/ts_variability.mat',"vardat") ; 
+varnodes = mean(lll.vardat.subset1.map,2) ; 
+varedges = varnodes + varnodes' ; 
 
+tiledlayout(2,2)
+
+nexttile
+imsc_grid_comm(ss,parc.ca(1:finfo.nnodes),[],[0.5 0.5 0.5],0.5)
+colormap(greens(100))
+cb = colorbar ;
+cb.Label.String = "seconds" ; 
+axis square
+xticks('')
+yticks('')
+title({ 'event length' ''} )
+
+nexttile
+imsc_grid_comm(autoedges,parc.ca(1:finfo.nnodes),[],[0.5 0.5 0.5],0.5)
+colormap(greens(100))
+cb = colorbar ;
+cb.Label.String = "sec.+sec." ; 
+axis square
+xticks('')
+yticks('')
+title({ 'autocorrelation' num2str(round(corr(tv(ss),tv(autoedges),'type','s'),2))} )
+
+nexttile
+imsc_grid_comm(cbvedges,parc.ca(1:finfo.nnodes),[],[0.5 0.5 0.5],0.5)
+colormap(greens(100))
+cb = colorbar ;
+cb.Label.String = "cbv+cbv" ; 
+axis square
+xticks('')
+yticks('')
+title({ 'cerberal blood vol.' num2str(round(corr(tv(ss),tv(cbvedges),'type','s'),2))} )
+
+nexttile
+imsc_grid_comm(varedges,parc.ca(1:finfo.nnodes),[],[0.5 0.5 0.5],0.5)
+colormap(greens(100))
+cb = colorbar ;
+cb.Label.String = "var.+var." ; 
+axis square
+xticks('')
+yticks('')
+title({ 'time series variance' num2str(round(corr(tv(ss),tv(varedges),'type','s'),2))} )
+
+set(gcf,'Position',[100 100 500 500])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/othermats_comp.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
