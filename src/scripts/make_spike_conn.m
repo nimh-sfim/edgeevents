@@ -6,7 +6,7 @@ close all
 
 %% preamble load data
 
-run('./config/config_hcp_sch200_2.m') 
+run('./config/config_hcp_sch200_1.m') 
 
 SPK_THR = 2.25 ; 
 
@@ -197,7 +197,7 @@ for idx = 1:3
         yticks('')
     end
     
-    clim([0 8])
+    clim([0 15])
 
     axis square
     xticks('')
@@ -284,7 +284,7 @@ for idx = 1:3
     fcn_boxpts(dat,...
         cat,cmap,...
         0,parc.names(g1sort))
-    ylim([0 8.5])
+    ylim([0 18])
 
     %ylim([ 0 .1])
     axis square

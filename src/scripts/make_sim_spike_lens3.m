@@ -108,3 +108,19 @@ save(filename,'simrss*','-v7.3')
 
 
 %%
+
+mats = zeros(200,200,3) ; 
+
+for idx = 1:1000
+    disp(idx)
+
+    for jdx = 1:3
+
+        mats(:,:,jdx) =  mats(:,:,jdx) + mksq(mm.simmat.nocov{idx}(jdx,:)) ; 
+    end
+end
+
+% load spk conn
+filename = [ DD.PROC '/spk_conn_avg_' OUTSTR '.mat' ] ; 
+load(filename,'spike_conn')
+ 

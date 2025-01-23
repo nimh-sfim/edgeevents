@@ -486,7 +486,9 @@ useGenFunc = boxCarSpkGen ;
 
 %% now vary the length of both durations 
 
-addnoisefrac=0.5 ; 
+addvarfrac=0.5 ; 
+%addnoisefrac = 0.4 ; 
+snrtarg = 2 ; 
 
 hrf = getcanonicalhrf_wmag(1/neuralHz,1/neuralHz) ; 
 
@@ -530,23 +532,26 @@ for idx = 1:length(stimLenSweep)
         
         fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
         fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
+        
+        % % adding noise
+        % % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+        % % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+        % 
+        % % add variability 
+        % % fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*addnoisefrac)) ; 
+        % % fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*addnoisefrac)) ; 
+        % nn1 = generate_phase_surrogates(fts1); 
+        % nn2 = generate_phase_surrogates(fts2) ; 
+        % nn1 = (nn1./max(nn1)).*(max(fts1).*addvarfrac) ; 
+        % nn2 = (nn2./max(nn2)).*(max(fts2).*addvarfrac) ; 
+        % 
+        % cnr2(idx,jdx,ndx) = mean([ max(fts1)/std(nn1) max(fts2)/std(nn2)]) ; 
+        % 
+        % fts1 = fts1 + nn1 ; 
+        % fts2 = fts2 + nn2 ; 
 
-        % adding noise
-        % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
-        % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
-    
-        % add 2% signal noise 
-        % fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*addnoisefrac)) ; 
-        % fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*addnoisefrac)) ; 
-        nn1 = generate_phase_surrogates(fts1); 
-        nn2 = generate_phase_surrogates(fts2) ; 
-        nn1 = (nn1./max(nn1)).*(max(fts1).*addnoisefrac) ; 
-        nn2 = (nn2./max(nn2)).*(max(fts2).*addnoisefrac) ; 
-
-        cnr2(idx,jdx,ndx) = mean([ max(fts1)/std(nn1) max(fts2)/std(nn2)]) ; 
-
-        fts1 = fts1 + nn1 ; 
-        fts2 = fts2 + nn2 ; 
+        fts1 = add_var_n_noiseSNR(fts1,addvarfrac,snrtarg) ; 
+        fts2 = add_var_n_noiseSNR(fts2,addvarfrac,snrtarg) ; 
 
         ee = prod([fts1(:) fts2(:)],2) ; 
 
@@ -621,7 +626,7 @@ for edx = 1:size(exemplarindxcol,1)
 
 % get an exemplar
 
-nreps = 50 ; 
+nreps = 20 ; 
 exres = cell(nreps,1) ; 
 
 idx = exemplarindz(edx,1) ; 
@@ -649,22 +654,26 @@ for ndx = 1:nreps
     fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
     fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
 
-    % adding noise
-    % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
-    % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+    % % adding noise
+    % % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
+    % % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
+    % 
+    % % add 2% signal noise 
+    % % fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*addnoisefrac)) ; 
+    % % fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*addnoisefrac)) ; 
+    % % fts1 = fts1 + normrnd(0,(max(fts1).*addnoisefrac),size(fts1)) ; 
+    % % fts2 = fts2 + normrnd(0,(max(fts2).*addnoisefrac),size(fts2)) ; 
+    % nn1 = generate_phase_surrogates(fts1) ; 
+    % nn2 = generate_phase_surrogates(fts2); 
+    % nn1 = (nn1./max(nn1)).*(max(fts1).*addvarfrac) ; 
+    % nn2 = (nn2./max(nn2)).*(max(fts2).*addvarfrac) ; 
+    % 
+    % fts1 = fts1 + nn1 ; 
+    % fts2 = fts2 + nn2 ; 
 
-    % add 2% signal noise 
-    % fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*addnoisefrac)) ; 
-    % fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*addnoisefrac)) ; 
-    % fts1 = fts1 + normrnd(0,(max(fts1).*addnoisefrac),size(fts1)) ; 
-    % fts2 = fts2 + normrnd(0,(max(fts2).*addnoisefrac),size(fts2)) ; 
-    nn1 = generate_phase_surrogates(fts1) ; 
-    nn2 = generate_phase_surrogates(fts2); 
-    nn1 = (nn1./max(nn1)).*(max(fts1).*addnoisefrac) ; 
-    nn2 = (nn2./max(nn2)).*(max(fts2).*addnoisefrac) ; 
+    fts1 = add_var_n_noiseSNR(fts1,addvarfrac,snrtarg) ; 
+    fts2 = add_var_n_noiseSNR(fts2,addvarfrac,snrtarg) ; 
 
-    fts1 = fts1 + nn1 ; 
-    fts2 = fts2 + nn2 ; 
 
     ee = prod([fts1(:) fts2(:)],2) ; 
 
@@ -764,7 +773,7 @@ for edx = 1:size(exemplarindxcol,1)
 
 % get an exemplar
 
-nreps = 50 ; 
+nreps = 20 ; 
 exres = cell(nreps,1) ; 
 
 idx = exemplarindz(edx,1) ; 
@@ -797,13 +806,17 @@ for ndx = 1:nreps
     % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
 
     % add 2% signal noise 
-    nn1 = generate_phase_surrogates(fts1) ; 
-    nn2 = generate_phase_surrogates(fts2); 
-    nn1 = (nn1./max(nn1)).*(max(fts1).*addnoisefrac) ; 
-    nn2 = (nn2./max(nn2)).*(max(fts2).*addnoisefrac) ; 
+    % nn1 = generate_phase_surrogates(fts1) ; 
+    % nn2 = generate_phase_surrogates(fts2); 
+    % nn1 = (nn1./max(nn1)).*(max(fts1).*addvarfrac) ; 
+    % nn2 = (nn2./max(nn2)).*(max(fts2).*addvarfrac) ; 
+    % 
+    % fts1 = fts1 + nn1 ; 
+    % fts2 = fts2 + nn2 ; 
 
-    fts1 = fts1 + nn1 ; 
-    fts2 = fts2 + nn2 ; 
+
+    fts1 = add_var_n_noiseSNR(fts1,addvarfrac,snrtarg) ; 
+    fts2 = add_var_n_noiseSNR(fts2,addvarfrac,snrtarg) ; 
 
     nfts1 = generate_phase_surrogates(fts1);
     nfts2 = generate_phase_surrogates(fts2);
@@ -880,6 +893,18 @@ xlabel('time (sec)')
 
 end
 
+% mean(mean(cnr2,3),'all')
+% 
+% ans =
+% 
+%     4.5359
+
+% std(mean(cnr2,3),[],'all')
+% 
+% ans =
+% 
+%     0.0312
+
 %% print it
 
 set(gcf,'Color','w')
@@ -894,7 +919,7 @@ close(gcf)
 
 %% plot the HR matrix
 
-TL = tiledlayout(1,2)
+TL = tiledlayout(1,3)
 TL.Title.String = 'Null data detection rates' ; 
 
 nexttile
@@ -906,13 +931,13 @@ clim([0 100])
 colormap(acton(100))
 axis square
 
-yticks(1:length(stimLenSweep))
-yticklabels(num2str(stimLenSweep'))
-ylabel('neural activity duration node A')
+yticks(1:2:length(stimLenSweep))
+yticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
+ylabel('activity duration node A')
 
-xticks(1:length(stimLenSweep))
-xticklabels(num2str(stimLenSweep'))
-xlabel('neural activity duration node B')
+xticks(1:2:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
+xlabel('activity duration node B')
 
 % nexttile
 % h = imagesc(hr.*nmat) ; 
@@ -929,9 +954,24 @@ xlabel('neural activity duration node B')
 % xticklabels(num2str(stimLenSweep'))
 % xlabel('neural activity duration node B')
 
+lll = stimLenSweep+stimLenSweep' ; 
+
+cm = gray(100); 
+
+nt = nexttile()
+scatter(mat(:),nmat(:),30,lll(:),'filled')
+xlabel('above thr. duration, sim')
+ylabel('above thr. duration, null')
+xlim([0 9])
+ylim([0 9])
+refline(1,0)
+colormap(nt,cm(10:90,:))
+cb = colorbar() ; 
+cb.Label.String = 'addivite activity dur.'
+axis square
 nt = nexttile
 
-lll = stimLenSweep+stimLenSweep' ; 
+
 
 % scatter of time in simulated, vs hitrate for null
 resmat = mat .* 1;
@@ -939,12 +979,12 @@ resmat(isnan(resmat)) = 0 ;
 h = scatter(resmat(:),hr(:).*100,30,lll(:),'filled') ; 
 %h.MarkerFaceColor = [0.8 0.8 0.8 ] ; 
 %h.MarkerFaceAlpha = 0.8 ;
-colormap(nt,parula)
+colormap(nt,cm(10:90,:))
 cb = colorbar() ; 
 cb.Label.String = 'addivite activity dur.'
 ylim([0 100])
 axis square
-xlabel('simulated event length (sec) (non-null)')
+xlabel('simulated event length (non-null)')
 ylabel('detection rate (null)')
 
 

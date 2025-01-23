@@ -59,6 +59,10 @@ cortexplot = @(x_) parc_plot(surfss,annotm,'schaefer200-yeo17', x_(:),...
         'cmap',parula(100),...
         'viewcMap',0,'newFig',0,'viewStr','all') ;
 
+cortexplotcb = @(x_) parc_plot_wcolorbar(x_,surfss,annotm,...
+    [min(x_) max(x_)],parula(),[100 100 600 1000]) ; 
+
+
 %% just put the subject list here
 
 sublist.all = cellstr(string(load([ DD.INTERM 'sub_list.txt']))) ; 
