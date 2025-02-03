@@ -10,6 +10,8 @@ switch func
         funchandle = @(x_) mean(x_,2) ; 
     case 'sum'
         funchandle = @(x_) sum(x_,2) ; 
+    case 'entropy'
+        funchandle = @(x_) arrayfun(@(j_) entropy(logical(x_(j_,:))),1:size(x_,1))' ; 
     case 'ec'
         funchandle = @(x_) eigenvector_centrality_und(mks(x_)) ;
         gathermethod = 2 ;

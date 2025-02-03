@@ -1,4 +1,5 @@
 %% start
+%% TODO ADAPT THIS FOR SIG TESTING ALL EDGES 
 
 clearvars
 clc
@@ -10,19 +11,13 @@ run('./config/config_hcp_sch200_1.m')
 
 SPK_THR = 2.25 ;
 
+g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
+remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ;
+
 %% load the spike conn
 
 filename = [ DD.PROC '/spk_conn_ex_avg_' OUTSTR '.mat' ] ; 
 load(filename)
-
-%% look at long vs short scatter again, and extract just the super long edges
-
-% dat1 = tv(spike_conn.subset1.short) ; 
-% dat2 = tv(spike_conn.subset1.long) ; 
-% 
-% tld = arrayfun(@(i_) point_to_line([dat1(i_) dat2(i_) 0],[0 0 0],[1 1 0]),1:length(dat1)) ; 
-% 
-% longest_edges = tld>3 ; 
 
 %% do some stat testing
 
@@ -32,7 +27,7 @@ load(filename)
 
 %% boots
 
-nboot = 1000 ; 
+nboot = 5000 ; 
 
 nsubs = length(sublist.all) ; 
 subsetsz = length(sublist.subset1) ; 
@@ -42,49 +37,6 @@ rng(42)
 
 surrA = struct() ;
 surrB = struct() ;
-% lennames = {'short' 'inter' 'long'} ; 
-% 
-% % and record for this boot
-% for sdx = 1:3
-%     surrA.(lennames{sdx}) = zeros(finfo.nnodes,finfo.nnodes,nboot); 
-%     surrB.(lennames{sdx}) = zeros(finfo.nnodes,finfo.nnodes,nboot) ; 
-% end
-% 
-% for idx = 1:nboot
-% 
-%     disp(idx)
-% 
-%     % pickout the surr data to average
-%     bootinds = randsample(1:nperms,subsetsz,true) ; 
-% 
-%     tmpA = zeros(3,finfo.nnodes*(finfo.nnodes-1)/2) ; 
-%     tmpB = zeros(3,finfo.nnodes*(finfo.nnodes-1)/2)  ; 
-% 
-%     for bdx = bootinds 
-% 
-%         aa = arrayfun(@(i_)simmat.nocov{bdx}(i_,:),1:3,'UniformOutput',false) ; 
-%         bb = arrayfun(@(i_)simmat.keepcov{bdx}(i_,:),1:3,'UniformOutput',false) ; 
-% 
-%         for sdx = 1:3
-%             tmpA(sdx,:) = tmpA(sdx,:) + aa{sdx}  ; 
-%             tmpB(sdx,:) = tmpB(sdx,:) + bb{sdx}  ; 
-%         end
-% 
-%     end
-% 
-%     % make mean
-%     for sdx = 1:3
-%         tmpA(sdx,:) = tmpA(sdx,:) ./ subsetsz  ; 
-%         tmpB(sdx,:) = tmpB(sdx,:) ./ subsetsz  ; 
-%     end
-% 
-%     % and record for this boot
-%     for sdx = 1:3
-%         surrA.(lennames{sdx})(:,:,idx) = mksq(tmpA(sdx,:)) ; 
-%         surrB.(lennames{sdx})(:,:,idx) = mksq(tmpB(sdx,:)) ; 
-%     end
-% 
-% end 
 
 lennames = {'longer' 'longest'} ; 
 
@@ -136,35 +88,63 @@ end
 
 %%
 
+% sig = struct() ; 
+% 
+% for sdx = 1:2
+% 
+%     sig.A.more.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) >= ...
+%         prctile(surrA.(lennames{sdx}),100,3) ; 
+%     sig.B.more.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) >= ...
+%         prctile(surrB.(lennames{sdx}),100,3) ; 
+% 
+%     sig.A.less.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) <= ...
+%         prctile(surrA.(lennames{sdx}),0,3) ; 
+%     sig.B.less.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) <= ...
+%         prctile(surrB.(lennames{sdx}),0,3) ; 
+% 
+% end
+
+%% 
+
 sig = struct() ; 
 
 for sdx = 1:2
 
-    sig.A.more.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) >= ...
-        prctile(surrA.(lennames{sdx}),100,3) ; 
-    sig.B.more.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) >= ...
-        prctile(surrB.(lennames{sdx}),100,3) ; 
+    sig.A.more.(lennames{sdx}) = mksq(fdr_bh(tv((sum(surrA.(lennames{sdx})>=spike_conn_ex.subset1.(lennames{sdx}),3)+1) ./ (nboot+1)))) ; 
+    sig.B.more.(lennames{sdx}) = mksq(fdr_bh(tv((sum(surrB.(lennames{sdx})>=spike_conn_ex.subset1.(lennames{sdx}),3)+1) ./ (nboot+1)))) ; 
 
-    sig.A.less.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) <= ...
-        prctile(surrA.(lennames{sdx}),0,3) ; 
-    sig.B.less.(lennames{sdx}) = spike_conn_ex.subset1.(lennames{sdx}) <= ...
-        prctile(surrB.(lennames{sdx}),0,3) ; 
+    sig.A.less.(lennames{sdx}) = mksq(fdr_bh(tv((sum(surrA.(lennames{sdx})<=spike_conn_ex.subset1.(lennames{sdx}),3)+1) ./ (nboot+1)))) ; 
+    sig.B.less.(lennames{sdx}) = mksq(fdr_bh(tv((sum(surrA.(lennames{sdx})<=spike_conn_ex.subset1.(lennames{sdx}),3)+1) ./ (nboot+1)))) ; 
 
 end
+
 
 %% save the sig info
 
 filename = [ DD.PROC '/spk_longestedge_sigmask_' OUTSTR '.mat' ] ; 
 save(filename,'sig','-v7.3')
 
-%% sig test 
+%% plot eeet
 
-CM = flipud(tempo(100)) ; 
+CM = flipud(blues(100)) ; 
 
-TL = tiledlayout(1,4) ;
-set(gcf,'Position',[100 100 1300 400])
+TL = tiledlayout(3,2) ;
+set(gcf,'Position',[100 100 800 800])
 
 nt = nexttile() ;
+
+dat = spike_conn_ex.subset1.longest ; 
+
+imsc_grid_comm(dat,remap_labs,1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(g1sort))
+axis square
+
+cb = colorbar() ; 
+cb.Label.String = 'average event count' ; 
+colormap(nt,CM)
+cc = clim() ;  
+clim(cc) ;
+xticks([])
+
 
 % from a different approach
 %
@@ -199,17 +179,19 @@ nt = nexttile() ;
 % rl.LineWidth = 2 ;
 % colormap(inferno(2))
 
+nt = nexttile()
+
 sigmask = sig.B.more.longest ; 
 dat = spike_conn_ex.subset1.longest ; 
 
-imsc_grid_comm(sigmask.*dat,parc.ca(1:200),1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(1:17))
+imsc_grid_comm(sigmask,remap_labs,1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],parc.names(g1sort))
 axis square
 
-cb = colorbar() ; 
-cb.Label.String = 'average event count' ; 
-colormap([ 1 1 1 ; CM])
-tmp = cb.TickLabels ; 
-cb.TickLabels = { 'non sig.' tmp{2:end} } ; 
+% cb = colorbar() ; 
+% cb.Label.String = 'average event count' ; 
+colormap(nt,[ 1 1 1 ; CM(80,:)])
+% tmp = cb.TickLabels ; 
+% cb.TickLabels = { 'non sig.' tmp{2:end} } ; 
 cc = clim() ;  
 clim(cc) ;
 xticks([])
@@ -219,7 +201,7 @@ nt2 = nexttile() ;
 
 %longest_edges = dat >= longedge_thr ; 
 
-bb = get_blocky(sigmask,parc.ca(1:200))
+bb = get_blocky(sigmask,remap_labs)
 imsc_grid_comm(bb,1:17,...
     1,[0.2 0.2 0.2],[0.1 0.1 0.1 ],[])
 set(gca,'TickLength',[ 0 0])
@@ -232,7 +214,7 @@ yticks([])
 
 axis square
 
-colormap(nt2,[ 1 1 1 ; flipud(tempo(100))])
+colormap(nt2,[ 1 1 1 ; CM])
 
 nexttile()
 
@@ -253,9 +235,14 @@ nexttile()
 
 histogram(nonzeros(tv(sigmask.*meanfc)),...
     'Normalization','count','FaceColor',CM(80,:),'EdgeAlpha',0,'BinWidth',0.025)
+xline(mean(nonzeros(tv(sigmask.*meanfc))),Color=CM(80,:))
+
 hold on
 histogram(nonzeros(tv(~sigmask.*meanfc)),...
     'Normalization','count','FaceColor',[0.5 0.5 0.5],'EdgeAlpha',0,'BinWidth',0.025)
+
+xline(mean(nonzeros(tv(~sigmask.*meanfc))),Color=[0.5 0.5 0.5])
+
 
 legend({'sig. edges' 'non-sig. edges'},'Location','northeastoutside')
 
@@ -331,13 +318,7 @@ close(gcf)
 
 %% breakdown by system
 
-g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
-
-remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
-%remap_colors = remaplabs(1:17,g1sort,1:17) ; 
-% cmap = get_nice_yeo_cmap('grad1') ; 
-cmap = viridis(17) ; 
-
+cmap = CM(end-25:end-9,:) ; 
 
 fcn_boxpts(sum(sigmask,2),...
     remap_labs,cmap,...
@@ -371,20 +352,19 @@ for idx = 1:np
 end
 % emp
 [~,ttt,~] = anova1(sum(sigmask),remap_labs,'off') ; 
-  % ttt
-  %   {'Source'}    {'SS'        }    {'df' }    {'MS'        }    {'F'       }
-  %   {'Groups'}    {[9.3836e+04]}    {[ 16]}    {[5.8647e+03]}    {[ 22.5591]}
-  %   {'Error' }    {[4.7575e+04]}    {[183]}    {[  259.9720]}    {0×0 double}
-  %   {'Total' }    {[1.4141e+05]}    {[199]}    {0×0 double  }    {0×0 double}
-  % 
-  % Column 6
-  % 
-  %   {'Prob>F'    }
-  %   {[4.3445e-35]}
-  %   {0×0 double  }
-  %   {0×0 double  }
+% ttt =
+% 
+%   4×6 cell array
+% 
+%     {'Source'}    {'SS'        }    {'df' }    {'MS'        }    {'F'       }    {'Prob>F'    }
+%     {'Groups'}    {[1.6783e+05]}    {[ 16]}    {[1.0490e+04]}    {[ 21.7321]}    {[3.7892e-34]}
+%     {'Error' }    {[8.8330e+04]}    {[183]}    {[  482.6760]}    {0×0 double}    {0×0 double  }
+%     {'Total' }    {[2.5616e+05]}    {[199]}    {0×0 double  }    {0×0 double}    {0×0 double  }
 
 (sum(pres>=ttt{2,5})+1)/(np+1)
+% ans =
+% 
+%    9.9990e-05
 
 %% also make the plot with the surrogate data that keeps cov
 
@@ -659,14 +639,14 @@ filename = [out_figdir '/longest_vs_nonlongest_stats.pdf' ] ;
 print(filename,'-dpdf','-vector','-bestfit')
 close(gcf)
 
-%% does knowing the fc annnnd the long spikes help out??
-
-
-filename = [ DD.PROC '/spk_conn_indiv_' OUTSTR '.mat' ] ; 
-load(filename)
-
-filename = [ DD.PROC '/fc_conn_indiv_' OUTSTR '.mat' ] ; 
-load(filename)
+% %% does knowing the fc annnnd the long spikes help out??
+% 
+% 
+% filename = [ DD.PROC '/spk_conn_indiv_' OUTSTR '.mat' ] ; 
+% load(filename)
+% 
+% filename = [ DD.PROC '/fc_conn_indiv_' OUTSTR '.mat' ] ; 
+% load(filename)
 
 %%
 

@@ -14,17 +14,15 @@ SPK_THR = 2.25 ;
 
 subsets = {'subset1' 'subset2'} ; 
 allspike_conn_indiv = struct() ; 
-iet_mats = struct() ; 
+spkderiv = struct() ; 
 
 for sdx = subsets
 
     allspike_conn_indiv.(sdx{1}) = zeros(finfo.nnodes+55,finfo.nnodes+55,length(sublist.(sdx{1}))) ; 
-    iet_mats.(sdx{1}).mean = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
-    %iet_mats.(sdx{1}).max = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
-    iet_mats.(sdx{1}).std = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
-
-    iet_mats.(sdx{1}).meano = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
-    iet_mats.(sdx{1}).stdo = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
+    spkderiv.(sdx{1}).mean = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
+    spkderiv.(sdx{1}).burst1 = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
+    spkderiv.(sdx{1}).burst2 = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
+    spkderiv.(sdx{1}).mean = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
 
     for idx = 1:length(sublist.(sdx{1}))
     
@@ -41,24 +39,32 @@ for sdx = subsets
 
         allspike_conn_indiv.(sdx{1})(:,:,idx) = mksq(cc) ; 
 
-        [a,~,c] = get_ctimes(spkmat>0) ; 
-        a = mksq(a) ; 
-        % b = mksq(b) ; 
-        c = mksq(c) ; 
-
-        iet_mats.(sdx{1}).mean(:,:,idx) = a(1:finfo.nnodes,1:finfo.nnodes) ; 
-        % iet_mats.(sdx{1}).max(:,:,idx) = b(1:finfo.nnodes,1:finfo.nnodes) ; 
-        iet_mats.(sdx{1}).std(:,:,idx) = c(1:finfo.nnodes,1:finfo.nnodes) ; 
+        % [a,~,c] = get_ctimes(spkmat>0) ; 
+        % a = mksq(a) ; 
+        % % b = mksq(b) ; 
+        % c = mksq(c) ; 
+        % 
+        % iet_mats.(sdx{1}).mean(:,:,idx) = a(1:finfo.nnodes,1:finfo.nnodes) ; 
+        % % iet_mats.(sdx{1}).max(:,:,idx) = b(1:finfo.nnodes,1:finfo.nnodes) ; 
+        % iet_mats.(sdx{1}).std(:,:,idx) = c(1:finfo.nnodes,1:finfo.nnodes) ; 
 
         % a different mean calc
+        % 
+        % [a,~,c] = get_ctimes(dd) ;
+        % a = mksq(a) ; 
+        % % b = mksq(b) ; 
+        % c = mksq(c) ; 
 
-        [a,~,c] = get_ctimes(dd) ;
-        a = mksq(a) ; 
-        % b = mksq(b) ; 
-        c = mksq(c) ; 
+        % [burstVec,memVec,meanIET,maxIET] = spk_burst_mem_2(inSpk) 
+        [bb1,bb2,mm,ee] = spk_burst_mem(dd) ; 
 
-        iet_mats.(sdx{1}).meano(:,:,idx) = a(1:finfo.nnodes,1:finfo.nnodes) ; 
-        iet_mats.(sdx{1}).stdo(:,:,idx) = c(1:finfo.nnodes,1:finfo.nnodes) ; 
+        bb1 = mksq(bb1) ; bb2 = mksq(bb2) ; mm = mksq(mm) ; ee = mksq(ee) ; 
+
+        spkderiv.(sdx{1}).burst1(:,:,idx) = bb1(1:finfo.nnodes,1:finfo.nnodes) ; 
+        spkderiv.(sdx{1}).burst2(:,:,idx) = bb2(1:finfo.nnodes,1:finfo.nnodes) ; 
+        spkderiv.(sdx{1}).mem(:,:,idx) = mm(1:finfo.nnodes,1:finfo.nnodes) ; 
+        spkderiv.(sdx{1}).mean(:,:,idx) = ee(1:finfo.nnodes,1:finfo.nnodes) ; 
+
 
     end
 
@@ -67,7 +73,7 @@ end
 %%
 
 filename = [ DD.PROC '/allspk_conn_indiv_' OUTSTR '.mat' ] ; 
-save(filename,'allspike_conn_indiv','iet_mats','-v7.3')
+save(filename,'allspike_conn_indiv','spkderiv','-v7.3')
 
 %% and get the spike lengths 
 
@@ -86,13 +92,17 @@ for sdx = subsets
     
         filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
         readdat = load(filename,'spike_len_cell') ; 
-    
        
         mm = mksq(cellfun(@mean,readdat.spike_len_cell )) ; 
         spike_len_mats.(sdx{1})(:,:,idx) = mm(1:finfo.nnodes,1:finfo.nnodes) ;
     end
 
 end
+
+%% save it
+
+filename = [ DD.PROC '/allspk_len_indiv_' OUTSTR '.mat' ] ; 
+save(filename,'spike_len_mats','-v7.3')
 
 %% and get the fc for each subj
 
@@ -121,7 +131,6 @@ for idx = 1:length(sublist.subset1)
 
     eventtot(idx,1) = sum(tv(allspike_conn_indiv.subset1(1:200,1:200,idx))) ; 
     eventtot(idx,2) = sum(tv(allspike_conn_indiv.subset2(1:200,1:200,idx))) ; 
-
 end
 
 %% work on the figure 
@@ -159,20 +168,6 @@ ee2 = ts(:,ind1).*ts(:,ind3) ;
 c2 = count_spks(ee2,SPK_THR) ;
 
 tiledlayout(2,1)
-
-% nexttile()
-% plot(ee1,'Color',[0.8 0.8 0.8])
-% ylim([-6 10]) 
-% hold on
-% plot(find(ee1>SPK_THR),ee1((ee1>SPK_THR)),'.')
-% 
-% nexttile()
-% 
-% plot(ee2,'Color',[0.8 0.8 0.8])
-% ylim([-6 10]) 
-% hold on
-% plot(find(ee2>SPK_THR),ee2((ee2>SPK_THR)),'.')
-% 
 
 nexttile()
 [ee1resamp,tt] = resampsig1d(ee1,1/0.72,1/0.72*10) ; 
@@ -346,6 +341,40 @@ filename = [out_figdir '/corr_vs_count_indivhist.pdf' ] ;
 print(filename,'-dpdf','-vector')
 close(gcf)
 
+%%
+
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/burst2_sys.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+
+%% and system maps
+
+g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
+
+remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
+cmap = purples(25) ; 
+
+fcn_boxpts(mean(countVcorr_nodewise)',...
+    remap_labs,repmat(cmap(1,:),17,1),...
+    0,parc.names(g1sort))
+%([0 8.5])
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+ylabel('mean coupling')
+set(gca,"TickLabelInterpreter",'none')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_corrNcount_sys.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
 %% compare corrVcount across cortex
 
 countVcorr_nodewise = zeros(length(sublist.subset1),finfo.nnodes) ; 
@@ -414,7 +443,7 @@ for idx = 1:np
     pres(idx) = tt{2,5} ; 
 end
 % emp
-[~,ttt,~] = anova1(mean(countVcorr_nodewise),parc.ca(1:200),'off') ; 
+[~,ttt,sss] = anova1(mean(countVcorr_nodewise),parc.ca(1:200),'off') ; 
 % ttt =
 % 
 %   4×6 cell array
@@ -426,38 +455,18 @@ end
 
 (sum(pres>=ttt{2,5})+1) / (np+1)
 
+% tukey HSD
+
+mm = multcompare(sss,'Alpha',0.001,'Display','off') ; 
+%mmm = mksq(mm(:,6)) ; 
+trilm = logical(tril(ones(17),-1)) ;
+mmm = zeros(17) ; 
+mmm(trilm) = mm(:,6) ;
+mmm = mmm + mmm' ; 
+
+mksq(fdr_bh(tv(mmm)))
+
 %% finally, spike lengths
-
-% tiledlayout(1,2)
-% 
-% nexttile()
-% 
-% ss = mean(spike_len_mats.subset1,3,"omitmissing").*finfo.TR ; 
-% 
-% imsc_grid_comm(ss,parc.ca(1:finfo.nnodes),[],[0.5 0.5 0.5],0.5)
-% colormap(purples)
-% cb = colorbar ;
-% cb.Label.String = "mean event length" ; 
-% axis square
-% xticks('')
-% yticks('')
-% 
-% nexttile()
-% 
-% %ss = mean(spike_len_mats.subset1,3,"omitmissing").*finfo.TR ; 
-% 
-% m1 = prctile(spike_len_mats.subset1,[1],3).*finfo.TR ; 
-% m2 = prctile(spike_len_mats.subset1,[99],3).*finfo.TR ; 
-% 
-% imsc_grid_comm(m2-m1.*finfo.TR,parc.ca(1:finfo.nnodes),[],[0.5 0.5 0.5],0.5)
-% colormap(purples)
-% cb = colorbar ;
-% cb.Label.String = "mean event length" ; 
-% axis square
-% xticks('')
-% yticks('')
-
-%%
 
 cmgreens = flipud(greens(100)) ; 
 
@@ -665,10 +674,7 @@ end
 [~,si] = sort(mean(meanlen,2,'omitmissing'),'desc') ; 
 annotm('schaefer200-yeo17').combo_names(si)
 
-
-
 cortexplot(~cellfun(@isempty,regexpi(annotm('schaefer200-yeo17').combo_names,annotm('schaefer200-yeo17').combo_names(si(3)))))
-
 
 %%
 
@@ -684,62 +690,70 @@ cortexplot(~cellfun(@isempty,regexpi(annotm('schaefer200-yeo17').combo_names,ann
 %                                 % same numeber of edges
 % [eVar,xbinmid,binmean] = norm_bin_model(xdat,xbins,ydat) ; 
 
-%% let's look at the inter-event times
-
-tmp = iet_mats.subset1.mean ; 
-tmp(tmp>=finfo.ntp-(floor(finfo.ntp*0.01))) = nan ; 
-ietmat = mean(tmp,3,'omitmissing') ; 
-
-tmp = iet_mats.subset1.std ; 
-tmp(tmp>=finfo.ntp-(floor(finfo.ntp*0.01))) = nan ; 
-ietstdmat = mean(tmp,3,'omitmissing') ; 
+%% TODO count vs corr figure??
 
 
-cmreds = flipud(reds()) ; 
 
-tiledlayout(1,3) 
 
-nt = nexttile() ; 
-
-imsc_grid_comm(ietmat,parc.ca(1:finfo.nnodes),0,[0 0 0],0.5)
-colormap(nt,cmreds)
-cb = colorbar ;
-cb.Label.String = "sec." ; 
-axis square
-xticks('')
-yticks('')
-title('mean inter-event durr. matrix')
-
-nt = nexttile()
-h = histscatter(tv(meanc),tv(ietmat),50) ;
-% h.MarkerFaceColor = [0.5 0.2 0.5] ;
-% h.MarkerFaceAlpha = 0.25 ; 
-% h.MarkerEdgeAlpha = 0 ;
-colormap(nt,purples())
-cb = colorbar() ; 
-%clim([0 80])
-cb.Label.String = 'bin count'
-ylabel('durration')
-xlabel('count')
-axis square
-grid minor
-title('mean count vs durration')
-corr(tv(meanc),tv(ietmat),'type','s')
-
-nt = nexttile()
-h = histscatter(tv(meanlen),tv(ietmat),50) ;
-% h.MarkerFaceColor = [0.5 0.2 0.5] ;
-% h.MarkerFaceAlpha = 0.25 ; 
-% h.MarkerEdgeAlpha = 0 ;
-colormap(nt,purples())
-cb = colorbar() ; 
-%clim([0 80])
-cb.Label.String = 'bin count'
-ylabel('durration')
-xlabel('count')
-axis square
-grid minor
-title('mean count vs durration')
-corr(tv(meanlen),tv(ietmat),'type','s')
-
-%%
+% %% TODO -- will this be added to paper?
+% 
+% 
+% %% let's look at the inter-event times
+% 
+% tmp = iet_mats.subset1.mean ; 
+% tmp(tmp>=finfo.ntp-(floor(finfo.ntp*0.01))) = nan ; 
+% ietmat = mean(tmp,3,'omitmissing') ; 
+% 
+% tmp = iet_mats.subset1.std ; 
+% tmp(tmp>=finfo.ntp-(floor(finfo.ntp*0.01))) = nan ; 
+% ietstdmat = mean(tmp,3,'omitmissing') ; 
+% 
+% 
+% cmreds = flipud(reds()) ; 
+% 
+% tiledlayout(1,3) 
+% 
+% nt = nexttile() ; 
+% 
+% imsc_grid_comm(ietmat,parc.ca(1:finfo.nnodes),0,[0 0 0],0.5)
+% colormap(nt,cmreds)
+% cb = colorbar ;
+% cb.Label.String = "sec." ; 
+% axis square
+% xticks('')
+% yticks('')
+% title('mean inter-event durr. matrix')
+% 
+% nt = nexttile()
+% h = histscatter(tv(meanc),tv(ietmat),50) ;
+% % h.MarkerFaceColor = [0.5 0.2 0.5] ;
+% % h.MarkerFaceAlpha = 0.25 ; 
+% % h.MarkerEdgeAlpha = 0 ;
+% colormap(nt,purples())
+% cb = colorbar() ; 
+% %clim([0 80])
+% cb.Label.String = 'bin count'
+% ylabel('durration')
+% xlabel('count')
+% axis square
+% grid minor
+% title('mean count vs durration')
+% corr(tv(meanc),tv(ietmat),'type','s')
+% 
+% nt = nexttile()
+% h = histscatter(tv(meanlen),tv(ietmat),50) ;
+% % h.MarkerFaceColor = [0.5 0.2 0.5] ;
+% % h.MarkerFaceAlpha = 0.25 ; 
+% % h.MarkerEdgeAlpha = 0 ;
+% colormap(nt,purples())
+% cb = colorbar() ; 
+% %clim([0 80])
+% cb.Label.String = 'bin count'
+% ylabel('durration')
+% xlabel('count')
+% axis square
+% grid minor
+% title('mean count vs durration')
+% corr(tv(meanlen),tv(ietmat),'type','s')
+% 
+% %%

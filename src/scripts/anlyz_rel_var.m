@@ -172,7 +172,6 @@ xbins = prctile(xdat,0:5:100) ; % just use simple percentiles, all bins have
 %grad_cifti = squeeze(niftiread('data/external/hpc_grad_sch200-yeo17.pscalar.nii')) ; 
 perminds = load('./data/external/schaefer-yeo7_200node_permuted_inds.mat') ; 
 
-
 eVarMat = mksq(eVar) ; 
 bb = get_blocky(eVarMat,parc.ca(1:200)) ; 
 nperm = 1e4 ; 
@@ -283,9 +282,12 @@ close(gcf)
 
 TL = tiledlayout(1,3,'TileSpacing','tight')
 
+g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
+remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
+
 nexttile(TL)
 
-imsc_grid_comm(mksq(eVar),parc.ca(1:200),[],[1 1 1],1,parc.names(1:17))
+imsc_grid_comm(mksq(eVar),remap_labs,[],[1 1 1],1,parc.names(1:17))
 axis square
 colormap(CM)
 
@@ -297,7 +299,7 @@ xticks([])
 
 nexttile(TL)
 
-imsc_grid_comm(get_blocky(mksq(eVar),parc.ca(1:finfo.nnodes)),1:17,[],[1 1 1],1,[])
+imsc_grid_comm(get_blocky(mksq(eVar),remap_labs),1:17,[],[1 1 1],1,[])
 axis square
 colormap(CM)
 clim([-max(abs(eVar))  max(abs(eVar))])
@@ -309,7 +311,7 @@ xticks([])
 
 nexttile(TL)
 
-h = imsc_grid_comm(get_blocky(mksq(eVar) ,parc.ca(1:finfo.nnodes)),...
+h = imsc_grid_comm(get_blocky(mksq(eVar) ,remap_labs),...
     1:17,0.5,[.8 .8 .8],[0.8 .8 .8],[]) ;
 h.AlphaData = sighigh_eVar_blocks + siglow_eVar_blocks' ; 
 axis square
