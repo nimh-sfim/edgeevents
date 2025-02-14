@@ -412,20 +412,22 @@ parc_plot_wcolorbar(zz_degree2,surfss,annotm,...
 
 %%
 
-%% what if you look at event length, outside of on-diagonal 
-
-newmat = zeros(finfo.nnodes,finfo.nnodes) ; 
-ca = parc.ca(1:finfo.nnodes) ; 
-
-
-newmat = meanlen .* 1 ; 
-newmat(ca==ca') = nan ; 
-
-dat = mean(newmat,'omitnan') ; 
-parc_plot_wcolorbar(dat,surfss,annotm,...
-    [min(dat) max(dat)],flipud(greens(100)),[100 100 600 1000])
-
-dat = mean(meanlen,'omitnan') ; 
-parc_plot_wcolorbar(dat,surfss,annotm,...
-    [min(dat) max(dat)],flipud(greens(100)),[100 100 600 1000])
-
+% %% what if you look at event length, outside of on-diagonal 
+% 
+% newmat = zeros(finfo.nnodes,finfo.nnodes) ; 
+% ca = parc.ca(1:finfo.nnodes) ; 
+% 
+% newmat = meanlen .* 1 ; 
+% newmat(ca==ca') = nan ; 
+% 
+% dat = mean(newmat,'omitnan') ; 
+% parc_plot_wcolorbar(dat,surfss,annotm,...
+%     [min(dat) max(dat)],flipud(greens(100)),[100 100 600 1000])
+% 
+% dat = mean(meanlen,'omitnan') ; 
+% parc_plot_wcolorbar(dat,surfss,annotm,...
+%     [min(dat) max(dat)],flipud(greens(100)),[100 100 600 1000])
+% 
+% dat = mean(meanfc,'omitnan') ; 
+% parc_plot_wcolorbar(dat,surfss,annotm,...
+%     [min(dat) max(dat)],flipud(greens(100)),[100 100 600 1000])

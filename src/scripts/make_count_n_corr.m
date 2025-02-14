@@ -757,3 +757,37 @@ cortexplot(~cellfun(@isempty,regexpi(annotm('schaefer200-yeo17').combo_names,ann
 % corr(tv(meanlen),tv(ietmat),'type','s')
 % 
 % %%
+
+
+%%
+
+h = histscatter(tv(meanfc),tv(meanlen),50) ;
+% h.MarkerFaceColor = [0.5 0.2 0.5] ;
+% h.MarkerFaceAlpha = 0.25 ; 
+% h.MarkerEdgeAlpha = 0 ;
+colormap(purples())
+cb = colorbar() ; 
+%clim([0 80])
+cb.Label.String = 'bin count'
+ylabel('durration')
+xlabel('correlation')
+axis square
+grid minor
+title('correlation vs durration')
+corr(tv(meanfc),tv(meanlen),'type','s')
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+%%
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/corrVdurr_mat.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%%
+
+
+

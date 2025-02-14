@@ -124,3 +124,23 @@ end
 filename = [ DD.PROC '/spk_conn_avg_' OUTSTR '.mat' ] ; 
 load(filename,'spike_conn')
  
+
+%%
+
+% % grab fc mat
+% ts = zscore(datStr(15).ts(:,1:200)) ; 
+% fc = corr(ts) ; 
+% 
+% sim_pr_cov = generate_phase_surrogates(ts,1,0) ; 
+% sim_pr_nocov = generate_phase_surrogates(ts,0,0) ; 
+% 
+% 
+% [V,D] = eig(fc);
+% X = randn(size(ts));
+% V_use = V*sqrt(D);
+% Y = V_use*X';
+% sim_randn_cov = Y';
+% 
+% 
+% [ts_sim_covfft,~] = simulate_BOLD_timecourse_func_v3( ...
+%     finfo.ntp,finfo.TR,finfo.TR,fc,mean((abs(fft(zscore(ts))).^2),2)) ; 
