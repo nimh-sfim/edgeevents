@@ -114,7 +114,7 @@ for sdx = 1:2
     sig.B.more.(lennames{sdx}) = mksq(fdr_bh(tv((sum(surrB.(lennames{sdx})>=spike_conn_ex.subset1.(lennames{sdx}),3)+1) ./ (nboot+1)))) ; 
 
     sig.A.less.(lennames{sdx}) = mksq(fdr_bh(tv((sum(surrA.(lennames{sdx})<=spike_conn_ex.subset1.(lennames{sdx}),3)+1) ./ (nboot+1)))) ; 
-    sig.B.less.(lennames{sdx}) = mksq(fdr_bh(tv((sum(surrA.(lennames{sdx})<=spike_conn_ex.subset1.(lennames{sdx}),3)+1) ./ (nboot+1)))) ; 
+    sig.B.less.(lennames{sdx}) = mksq(fdr_bh(tv((sum(surrB.(lennames{sdx})<=spike_conn_ex.subset1.(lennames{sdx}),3)+1) ./ (nboot+1)))) ; 
 
 end
 

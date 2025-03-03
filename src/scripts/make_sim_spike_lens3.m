@@ -76,7 +76,7 @@ for idx = 1:nperms
     tmpets = get_ets(simts_keepcov) ; 
     abv_thr = tmpets > SPK_THR ; 
     [spike_len_mat,spike_len_cell] = spk_lenmat(abv_thr) ;
-    simlens.keepcov{idx} = countcount(cell2mat(spike_len_cell'),1:100) ; % keep memory low ; % keep memory low
+    simlens.keepcov{idx} = countcount(cell2mat(spike_len_cell'),1:100) ; % keep memory low 
 
     simvar.keepcov{idx} = cellfun(@(x_) mad(x_,0),spike_len_cell) ; 
 

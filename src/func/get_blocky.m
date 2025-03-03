@@ -5,14 +5,14 @@ if size(indat,1) ~= length(ca) | size(indat,2) ~= length(ca)
 end
 
 if nargin < 3
-    summaryfunc = @mean ; 
+    summaryfunc = @(x_) mean(x_,'all') ; 
 end
 
 uniqca = unique(ca) ; 
 
 bmat = cell2mat(...
         arrayfun(@(i_) ...
-            arrayfun(@(j_) summaryfunc(unroll_helper(indat(ca==i_,ca==j_),i_,j_),'all') , uniqca(:)' ), ...
+            arrayfun(@(j_) summaryfunc(unroll_helper(indat(ca==i_,ca==j_),i_,j_)) , uniqca(:)' ), ...
         uniqca(:)',  'UniformOutput',false)' ...
     ) ; 
 

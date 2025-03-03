@@ -30,8 +30,8 @@ nedges = ( finfo.nnodes * (finfo.nnodes-1) ) / 2 ;
 
 %% load in motion and physio
 
-loadConf = load_hcp_regressors('/Users/faskowitzji/joshstuff/data/hcp352_regressors/hcp352_regressors',...
-      ['rfMRI_' imglob],'*rfMRI_REST1_RL_confounds.tsv') ; 
+% loadConf = load_hcp_regressors('/Users/faskowitzji/joshstuff/data/hcp352_regressors/hcp352_regressors',...
+%       ['rfMRI_' imglob],'*rfMRI_REST1_RL_confounds.tsv') ; 
 
 loadCC_WM = load_hcp_regressors('/Users/faskowitzji/joshstuff/data/hcp352_regressors/hcp352_regressors',...
       ['rfMRI_' imglob],'*rfMRI_REST1_RL_WM_acompcor.tsv') ; 
@@ -54,40 +54,23 @@ for idx = 1:length(sublist.(sdx{1}))
 
     disp([ num2str(idx) '-' num2str(length(sublist.(sdx{1}))) ' ' sdx{1}])  ; 
 
-    % sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
-    % 
-    % filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
-    % readdat = load(filename,'spike_len_mat') ; 
-    % 
-    % ets = get_ets(datStr(sind).ts(:,1:finfo.nnodes)) ; 
-    % 
-    % dd = discretize( readdat.spike_len_mat(:,cortmask), lowmedhigh_edges) ; 
-    % dd(isnan(dd)) = 0 ;
-    % 
-    % [~,o1] = count_spks(dd==1) ; 
-    % [~,o2] = count_spks(dd==2) ; 
-    % [~,o3] = count_spks(dd==3) ; 
-    % 
-    % etsrss_o = [ get_rss(o1) get_rss(o2) get_rss(o3) ] ; 
-    % %etsrss_o = [ get_rss(dd==1) get_rss(dd==2) get_rss(dd==3) ] ; 
-
+    sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
 
     %% physio signals 
 
     physigWM = table2array(loadCC_WM(datStr(sind).sub).values{1}) ;
     physigCSF = table2array(loadCC_CSF(datStr(sind).sub).values{1}) ;
 
-    [~,ff ] = arrayfun(@(i_) quick_pspec(physigWM(:,i_),0.72),1:5,'UniformOutput',false) ;
-    fftWM = cell2mat(ff)' + fftWM ; 
+    % [~,ff ] = arrayfun(@(i_) quick_pspec(physigWM(:,i_),0.72),1:5,'UniformOutput',false) ;
+    % fftWM = cell2mat(ff)' + fftWM ; 
+    % 
+    % [~,ff ] = arrayfun(@(i_) quick_pspec(physigCSF(:,i_),0.72),1:5,'UniformOutput',false) ;
+    % fftCSF = cell2mat(ff)' + fftCSF ; 
 
-    [~,ff ] = arrayfun(@(i_) quick_pspec(physigCSF(:,i_),0.72),1:5,'UniformOutput',false) ;
-    fftCSF = cell2mat(ff)' + fftCSF ; 
-
-
-    [ff ] = arrayfun(@(i_) pwelch(physigWM(:,i_),20,0,[],1/0.72),1:5,'UniformOutput',false) ;
+    [ff ] = arrayfun(@(i_) pwelch(physigWM(:,i_),100,0,[],1/0.72),1:5,'UniformOutput',false) ;
     fftWM2 = cell2mat(ff)' + fftWM2 ; 
 
-    [ff ] = arrayfun(@(i_) pwelch(physigCSF(:,i_),20,0,[],1/0.72),1:5,'UniformOutput',false) ;
+    [ff ] = arrayfun(@(i_) pwelch(physigCSF(:,i_),100,0,[],1/0.72),1:5,'UniformOutput',false) ;
     fftCSF2 = cell2mat(ff)' + fftCSF2 ; 
 
 
@@ -142,6 +125,8 @@ lg.Location = "northeastoutside"
 set(gcf,'Position',[100 100 800 400])
 set(gcf,'Color','w')
 
+%%
+
 out_figdir = [ './reports/figures/figD/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/compcor_psd.pdf' ] ; 
@@ -158,6 +143,9 @@ for sdx = subsets
     corr_w_phys.(sdx{1}).xcov_long_WMo = zeros(85,length(sublist.(sdx{1}))) ; 
     corr_w_phys.(sdx{1}).xcov_long_CSFo = zeros(85,length(sublist.(sdx{1}))) ; 
 
+    corr_w_phys.(sdx{1}).xcov_inter_WMo = zeros(85,length(sublist.(sdx{1}))) ; 
+    corr_w_phys.(sdx{1}).xcov_inter_CSFo = zeros(85,length(sublist.(sdx{1}))) ; 
+
     corr_w_phys.(sdx{1}).xcov_short_WMo = zeros(85,length(sublist.(sdx{1}))) ; 
     corr_w_phys.(sdx{1}).xcov_short_CSFo = zeros(85,length(sublist.(sdx{1}))) ; 
 
@@ -171,7 +159,7 @@ for sdx = subsets
         filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
         readdat = load(filename,'spike_len_mat') ; 
     
-        ets = get_ets(datStr(sind).ts(:,1:finfo.nnodes)) ; 
+        %ets = get_ets(datStr(sind).ts(:,1:finfo.nnodes)) ; 
             
         dd = discretize( readdat.spike_len_mat(:,cortmask), lowmedhigh_edges) ; 
         dd(isnan(dd)) = 0 ;
@@ -196,11 +184,14 @@ for sdx = subsets
 
         %% xcov
 
-        corr_w_phys.(sdx{1}).xcov_short_WMo(:,idx) = xcov(etsrss_o(:,1),physigWM(:,2),42,'normalized') ;
-        corr_w_phys.(sdx{1}).xcov_short_CSFo(:,idx) = xcov(etsrss_o(:,1),physigCSF(:,2),42,'normalized') ;
+        corr_w_phys.(sdx{1}).xcov_short_WMo(:,idx) = xcov(etsrss_o(:,1),physigWM(:,1),42,'normalized') ;
+        corr_w_phys.(sdx{1}).xcov_short_CSFo(:,idx) = xcov(etsrss_o(:,1),physigCSF(:,1),42,'normalized') ;
 
-        corr_w_phys.(sdx{1}).xcov_long_WMo(:,idx) = xcov(etsrss_o(:,3),physigWM(:,2),42,'normalized') ;
-        corr_w_phys.(sdx{1}).xcov_long_CSFo(:,idx) = xcov(etsrss_o(:,3),physigCSF(:,2),42,'normalized') ;
+        corr_w_phys.(sdx{1}).xcov_inter_WMo(:,idx) = xcov(etsrss_o(:,2),physigWM(:,1),42,'normalized') ;
+        corr_w_phys.(sdx{1}).xcov_inter_CSFo(:,idx) = xcov(etsrss_o(:,2),physigCSF(:,1),42,'normalized') ;
+
+        corr_w_phys.(sdx{1}).xcov_long_WMo(:,idx) = xcov(etsrss_o(:,3),physigWM(:,1),42,'normalized') ;
+        corr_w_phys.(sdx{1}).xcov_long_CSFo(:,idx) = xcov(etsrss_o(:,3),physigCSF(:,1),42,'normalized') ;
 
 
     end
@@ -215,21 +206,22 @@ save(filename,'corr_w_phys','-v7.3')
 
 %%
 
-tiledlayout(2,2)
+tiledlayout(2,3,'TileIndexing','columnmajor')
 
 cc = inferno(10) ; 
 
-plotnames = {'xcov_short_WMo' 'xcov_short_CSFo' 'xcov_long_WMo' 'xcov_long_CSFo' } ; 
+datnames = {'xcov_short_WMo' 'xcov_short_CSFo' 'xcov_inter_WMo' 'xcov_inter_CSFo' 'xcov_long_WMo' 'xcov_long_CSFo' } ; 
+plotnames = {'xcov_short_WM' 'xcov_short_CSF' 'xcov_inter_WM' 'xcov_inter_CSF' 'xcov_long_WM' 'xcov_long_CSF' } ; 
 
-longerplotnames1 = {'short' 'short' 'long' 'long'} ; 
-longerplotnames2 = {'WM second comp.' 'CSF second comp.' 'WM second comp.' 'CSF second comp.'  } ; 
+longerplotnames1 = {'short' 'short' 'inter' 'inter' 'long' 'long'} ; 
+longerplotnames2 = {'WM first comp.' 'CSF first comp.' 'WM first comp.' 'CSF first comp.' 'WM first comp.' 'CSF first comp.'  } ; 
 
-for idx = 1:4
+for idx = 1:6
 
     nexttile
     
     %plot(-42:1:42,corr_w_phys.subset1.xcovWM,'Color',[ cc(3,:) 0.2],'LineWidth',2)
-    dat = corr_w_phys.subset1.(plotnames{idx}) ; 
+    dat = corr_w_phys.subset1.(datnames{idx}) ; 
     for ss = 1:size(dat,2)
         % plot(-42:1:42,dat(:,idx),'LineWidth',2)
         x = (-42:1:42) ; 
@@ -272,7 +264,7 @@ for idx = 1:4
 
 end
 
-set(gcf,'Position',[100 100 1000 600])
+set(gcf,'Position',[100 100 800 400])
 set(gcf,'Color','w')
 
 %%
@@ -280,6 +272,48 @@ set(gcf,'Color','w')
 out_figdir = [ './reports/figures/figD/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/xcorr_w_compcor.pdf' ] ; 
-print(filename,'-dpdf','-bestfit')
+print(filename,'-dpdf')
 close(gcf)
 
+%% and correlated
+
+
+tiledlayout(2,3,'TileIndexing','rowmajor')
+
+cc = inferno(10) ; 
+
+nexttile()
+histogram(squeeze(corr_w_phys.(sdx{1}).ccWMo(1,1,:)))
+title('short vs WM first comp.')
+
+ylabel('count')
+
+nexttile()
+histogram(squeeze(corr_w_phys.(sdx{1}).ccWMo(2,1,:)))
+title('inter vs WM first comp.')
+
+nexttile()
+histogram(squeeze(corr_w_phys.(sdx{1}).ccWMo(3,1,:)))
+title('long vs WM first comp.')
+
+
+nexttile()
+histogram(squeeze(corr_w_phys.(sdx{1}).ccCSFo(1,1,:)))
+title('short vs CSF first comp.')
+
+nexttile()
+histogram(squeeze(corr_w_phys.(sdx{1}).ccCSFo(2,1,:)))
+title('inter vs CSF first comp.')
+
+nexttile()
+histogram(squeeze(corr_w_phys.(sdx{1}).ccCSFo(3,1,:)))
+title('long vs CSF first comp.')
+
+set(gcf,'Position',[100 100 800 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figD/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/corr_w_compcor.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)

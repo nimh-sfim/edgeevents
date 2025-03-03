@@ -44,16 +44,14 @@ for sdx = subsets(1)
     corr_w_card.(sdx{1}).ccardmap.inter = zeros(finfo.nnodes,length(sublist.(sdx{1}))) ; 
     corr_w_card.(sdx{1}).ccardmap.long = zeros(finfo.nnodes,length(sublist.(sdx{1}))) ; 
 
-
     corr_w_card.(sdx{1}).ccardmapO.short = zeros(finfo.nnodes,length(sublist.(sdx{1}))) ; 
     corr_w_card.(sdx{1}).ccardmapO.inter = zeros(finfo.nnodes,length(sublist.(sdx{1}))) ; 
     corr_w_card.(sdx{1}).ccardmapO.long = zeros(finfo.nnodes,length(sublist.(sdx{1}))) ; 
 
-
     corr_w_card.(sdx{1}).ccardmapTS = zeros(finfo.nnodes,length(sublist.(sdx{1}))) ; 
 
-
     corr_w_card.(sdx{1}).xcov_long_Cardo = zeros(85,length(sublist.(sdx{1}))) ; 
+    corr_w_card.(sdx{1}).xcov_inter_Cardo = zeros(85,length(sublist.(sdx{1}))) ; 
     corr_w_card.(sdx{1}).xcov_short_Cardo = zeros(85,length(sublist.(sdx{1}))) ; 
 
     for idx = 1:length(sublist.(sdx{1}))
@@ -65,7 +63,7 @@ for sdx = subsets(1)
         filename = [DD.PROC '/' imglob '/' datStr(sind).sub '_' OUTSTR '_' , num2str(SPK_THR) , '_spike_len.mat'] ; 
         readdat = load(filename,'spike_len_mat') ; 
     
-        ets = get_ets(datStr(sind).ts(:,1:finfo.nnodes)) ; 
+        % ets = get_ets(datStr(sind).ts(:,1:finfo.nnodes)) ; 
             
         dd = discretize( readdat.spike_len_mat(:,cortmask), lowmedhigh_edges) ; 
         dd(isnan(dd)) = 0 ;
@@ -100,6 +98,7 @@ for sdx = subsets(1)
         %% xcov
 
         corr_w_card.(sdx{1}).xcov_short_Cardo(:,idx) = xcov(etsrss_o(:,1),cardsig,42,'normalized') ;
+        corr_w_card.(sdx{1}).xcov_inter_Cardo(:,idx) = xcov(etsrss_o(:,1),cardsig,42,'normalized') ;
         corr_w_card.(sdx{1}).xcov_long_Cardo(:,idx) = xcov(etsrss_o(:,3),cardsig,42,'normalized') ;
 
 
@@ -108,16 +107,16 @@ end
 
 %%
 
-tiledlayout(1,2)
+tiledlayout(1,3)
 
 cc = inferno(10) ; 
 
-plotnames = {'xcov_short_Cardo' 'xcov_long_Cardo' } ; 
+plotnames = {'xcov_short_Cardo' 'xcov_inter_Cardo' 'xcov_long_Cardo' } ; 
 
-longerplotnames1 = {'short' 'long'} ; 
-longerplotnames2 = {'cardiac' 'cardiac'} ; 
+longerplotnames1 = {'short' 'inter' 'long'} ; 
+longerplotnames2 = {'cardiac' 'cardiac' 'cardiac'} ; 
 
-for idx = 1:2
+for idx = 1:3
 
     nexttile
     
@@ -158,13 +157,13 @@ for idx = 1:2
         xlabel('time (sec)')
     end
 
-    if idx == 1 || idx == 3
+    if idx == 1 
         ylabel('correlation')
     end
 
 end
 
-set(gcf,'Position',[100 100 1000 400])
+set(gcf,'Position',[100 100 800 300])
 set(gcf,'Color','w')
 
 %%
@@ -172,7 +171,7 @@ set(gcf,'Color','w')
 out_figdir = [ './reports/figures/figD/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/xcorr_w_card.pdf' ] ; 
-print(filename,'-dpdf','-bestfit')
+print(filename,'-dpdf')
 close(gcf)
 
 %%
@@ -182,33 +181,13 @@ nt1 = nexttile()
 
 dat = mean(corr_w_card.subset1.ccardmapTS,2) ; 
 ccc = [ parula(100) ] ; 
-vvv = [-max(abs(dat)) max(abs(dat))] ; 
+%vvv = [-max(abs(dat)) max(abs(dat))] ; 
 
-pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dat ,...
-    'valRange',vvv,...
-    'cmap',ccc, ...
-    'viewcMap',0,'newFig',0,'viewStr','all',...
-    'parenth',TL)
-pp.Layout = nt1.Layout ; 
+parc_plot_wcolorbar(dat,surfss,annotm,...
+    [-.02 .02], ...
+    ccc,[100 100 600 1000])
 
-nt2 = nexttile(TL)
-
-hh = imagesc(dat) 
-cb = colorbar()
-clim(vvv)
-hh.Visible = 'off' ;
-hh.Parent.Visible = 'off' ; 
-cb.Location = "north" ; 
-cl = clim() ; 
-cb.Ticks = linspace(cl(1),cl(2),5)
-%cb.TickLabels = strtrim(cellstr(num2str(cellfun(@(x_) round(str2num(x_),5) , cb.TickLabels)))) ; 
-cm = colormap() ; 
-colormap(nt2,cm(2:end,:))
-
-TL.TileSpacing = 'tight'
-
-set(gcf,'Position',[100 100 600 1000])
-set(gcf,'Color','w')
+%%
 
 out_figdir = [ './reports/figures/figD/' ]
 mkdir(out_figdir)
@@ -225,33 +204,12 @@ for iii = {'short' 'inter' 'long'}
     
     dat = mean(corr_w_card.subset1.ccardmapO.(iii{1}),2) ; 
     ccc = [ parula(100) ] ; 
-    vvv = [-max(abs(dat)) max(abs(dat))] ; 
+    % vvv = [-max(abs(dat)) max(abs(dat))] ; 
     
-    pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dat ,...
-        'valRange',vvv,...
-        'cmap',ccc, ...
-        'viewcMap',0,'newFig',0,'viewStr','all',...
-        'parenth',TL)
-    pp.Layout = nt1.Layout ; 
-    
-    nt2 = nexttile(TL)
-    
-    hh = imagesc(dat) 
-    cb = colorbar()
-    clim(vvv)
-    hh.Visible = 'off' ;
-    hh.Parent.Visible = 'off' ; 
-    cb.Location = "north" ; 
-    cl = clim() ; 
-    cb.Ticks = linspace(cl(1),cl(2),5)
-    % cb.TickLabels = strtrim(cellstr(num2str(cellfun(@(x_) round(str2num(x_),5) , cb.TickLabels)))) ; 
-    cm = colormap() ; 
-    colormap(nt2,cm(2:end,:))
-    
-    TL.TileSpacing = 'tight'
-    
-    set(gcf,'Position',[100 100 600 1000])
-    set(gcf,'Color','w')
+    parc_plot_wcolorbar(dat,surfss,annotm,...
+        [-.02 .02], ...
+        ccc,[100 100 600 1000])
+
     
     out_figdir = [ './reports/figures/figD/' ]
     mkdir(out_figdir)
@@ -261,3 +219,33 @@ for iii = {'short' 'inter' 'long'}
 
 end
 
+%%
+
+%% and correlated
+
+
+tiledlayout(1,3,'TileIndexing','rowmajor')
+
+nexttile()
+histogram(squeeze(corr_w_card.(sdx{1}).ccCardo(1,:)))
+title('short vs card.')
+
+ylabel('count')
+
+nexttile()
+histogram(squeeze(corr_w_card.(sdx{1}).ccCardo(2,:)))
+title('inter vs card.')
+
+nexttile()
+histogram(squeeze(corr_w_card.(sdx{1}).ccCardo(3,:)))
+title('long vs card.')
+
+
+set(gcf,'Position',[100 100 800 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figD/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/corr_w_card.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)

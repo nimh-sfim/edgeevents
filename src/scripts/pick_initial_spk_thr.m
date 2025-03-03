@@ -13,8 +13,9 @@ run('./config/config_hcp_sch200_1.m')
 thrs = 0:0.25:4 ; 
 nthrs = length(thrs) ; 
 
-res_nodewise = nan(NSUBS,finfo.nnodes,nthrs) ; 
+% res_nodewise = nan(NSUBS,finfo.nnodes,nthrs) ; 
 res_glob = nan(NSUBS,nthrs) ; 
+res_meanspk = zeros(finfo.nnodes,finfo.nnodes,nthrs) ; 
 
 %%
 
@@ -27,10 +28,11 @@ for tdx = 1:nthrs
 
     thr = thrs(tdx) ;
 
-    tmpres_nw = nan(NSUBS,finfo.nnodes) ; 
+    % tmpres_nw = nan(NSUBS,finfo.nnodes) ; 
     tmpres_glob = nan(NSUBS,1) ; 
+    tmpres_mat = zeros(finfo.nnodes,finfo.nnodes,NSUBS) ; 
 
-    for idx = 1:NSUBS
+    parfor idx = 1:NSUBS
         
         ts = datStr(idx).ts(:,1:nnodes) ; 
         ets = get_ets(ts) ; 
@@ -40,13 +42,16 @@ for tdx = 1:nthrs
 
         tmpspk = mksq(spkc) ;  
 
-        tmpres_nw(idx,:) = arrayfun(...
-            @(i_)corr(fc(:,i_),tmpspk(:,i_),Type="Spearman"),...
-            1:nnodes) ; 
+        % tmpres_nw(idx,:) = arrayfun(...
+        %     @(i_)corr(fc(:,i_),tmpspk(:,i_),Type="Spearman"),...
+        %     1:nnodes) ; 
 
         tmpres_glob(idx) = corr(tv(fc),tv(tmpspk),'Type','Spearman') ; 
+        tmpres_mat(:,:,idx) = tmpspk ;
 
     end
+
+    res_meanspk(:,:,tdx) = mean(tmpres_mat,3,'omitmissing') ; 
 
     res_nodewise(:,:,tdx) = tmpres_nw ; 
     res_glob(:,tdx) = tmpres_glob ; 
@@ -102,11 +107,14 @@ text(0.05,0.05,[ 'mode: ' num2str(pickthr) ],'Units','normalized')
 
 % make a plot of the similarities at thr==2
 
+%%
+
 out_figdir = [ './reports/figures/supp/' ] ; 
 mkdir(out_figdir)
 filename = [out_figdir '/spk_thr_sel_histograms.pdf' ] ; 
 print(filename,'-dpdf','-vector','-bestfit')
 close(gcf)
+
 
 %%
 
@@ -147,3 +155,103 @@ for idx =  [2 2.25]
     close(gcf)
 
 end
+
+%% make some better plots
+
+corrvspk = zeros(nthrs,1) ; 
+for idx = 1:nthrs
+    corrvspk(idx) = corr(tv(meanfc),tv(res_meanspk(:,:,idx)),'type','s') ; 
+end
+
+plot(thrs,corrvspk,'o-'), xticks(thrs)
+
+for idx = 1:nthrs
+    text(thrs(idx),(corrvspk(idx)-0.03),num2str(round(corrvspk(idx),2)),'Rotation',-45)
+end
+
+xlabel('thresholds')
+ylabel('count vs. corr. mean global correlation')
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/threshold_sel_glob_comp.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%%
+
+cc = parula(nthrs) ; 
+
+for idx = 1:nthrs
+    histogram(res_glob(:,idx),'BinWidth',0.025,'FaceColor',cc(idx,:),'FaceAlpha',0.8)
+    hold on
+end
+hold off
+
+%%
+
+
+tloverall = tiledlayout(1,2)
+
+tl1 = tiledlayout(tloverall,6,1) ; 
+tl1.Layout.Tile = 1 ;
+
+nexttile(tl1,[ 5  1])
+
+imagesc(res_glob)
+xticks(1:nthrs)
+xticklabels(num2str(thrs'))
+
+xlabel('edge threshold')
+ylabel('subjects')
+
+title('count vs. corr. correlation')
+
+cb = colorbar()
+cb.Label.String = 'rank correlation'
+
+%nt = nexttile(TL1)
+
+tl2 = tiledlayout(tloverall,6,1) ; 
+tl2.Layout.Tile = 2 ;
+
+nexttile(tl2,1,[5 1])
+
+imagesc(res_glob==max(res_glob,[],2))
+xticklabels('')
+xticks(1:nthrs)
+
+title('max correlation')
+
+nexttile(tl2,[1 1])
+
+[~,ss] = max(res_glob,[],2)
+
+histogram(thrs(ss),[ thrs-0.125 thrs(end)+0.125])
+xlim([thrs(1)-0.125 thrs(end)+0.125])
+%xticks([ thrs-0.125 thrs(end)+0.125])
+xticks(thrs)
+xticklabels(num2str(thrs'))
+ylabel('count')
+xlabel('edge threshold')
+
+%%
+
+set(gcf,'Position',[100 100 600 400])
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+
+%%
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/threshold_sel_cross_subjects.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+
+

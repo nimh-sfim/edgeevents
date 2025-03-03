@@ -502,6 +502,8 @@ res2 = zeros(length(stimLenSweep),length(stimLenSweep),nrep) ;
 res2null = zeros(length(stimLenSweep),length(stimLenSweep),nrep) ; 
 cnr2 = zeros(length(stimLenSweep),length(stimLenSweep),nrep) ;
 
+%%
+
 rng(42)
 for ndx = 1:nrep
 
@@ -583,8 +585,13 @@ end
 
 end
 
-mat = mean(res2,3,'omitnan') ; 
-nmat = mean(res2null,3,'omitnan') ; 
+durrmat = mean(res2,3,'omitnan') ; 
+nullmat = mean(res2null,3,'omitnan') ; 
+
+%% save the info
+
+filename = [ DD.PROC '/sim_hrf_grid_' OUTSTR '.mat' ] ; 
+save(filename,'res2','res2null','durrmat','nullmat','-v7.3')
 
 %% VIZ part
 
@@ -597,9 +604,8 @@ TL = tiledlayout(2,1+size(exemplarindxcol,1),'TileIndexing','rowmajor') ;
 
 nexttile(TL)
 
-%res2(isnan(res2)) = 0 ; 
-h = imagesc(mat) ; 
-h.AlphaData = ~isnan(mat) ; 
+h = imagesc(durrmat) ; 
+h.AlphaData = ~isnan(durrmat) ; 
 cb = colorbar() ; 
 cb.Label.String = 'edge above thr. duration' ;
 
@@ -614,8 +620,23 @@ xlabel('activity duration node B')
 axis square
 colormap(acton(100))
 
-clim([0 max(mat,[],'all')])
+clim([0 max(durrmat,[],'all')])
 
+% high entries
+squrents = ~isnan(durrmat) & (durrmat >= 2.88 ) & (durrmat < 5.04) ; 
+[u,v] = find(squrents) ; 
+n = size(durrmat,1) ; 
+for edx = 1:length(u)
+
+    % imsc_addsquare(ca1,ca2,mirrorit,linecolor,linewidth)
+
+    imsc_addsquare(1:n==u(edx), ...
+        1:n==v(edx), ...
+        0,[ 1 1 1 ],2)
+
+end
+
+% plot exemplars
 for edx = 1:size(exemplarindxcol,1)
     imsc_addsquare(1:length(stimLenSweep)==exemplarindz(edx,1), ...
         1:length(stimLenSweep)== exemplarindz(edx,2), ...
@@ -654,23 +675,7 @@ for ndx = 1:nreps
     fts1 = resampsig1d(cnts1,neuralHz,fmriHz)  ; 
     fts2 = resampsig1d(cnts2,neuralHz,fmriHz)  ; 
 
-    % % adding noise
-    % % fts1 = fts1 + normrnd(0,0.05,size(fts1)) ; 
-    % % fts2 = fts2 + normrnd(0,0.05,size(fts2)) ;
-    % 
-    % % add 2% signal noise 
-    % % fts1 = fts1 + ((rand(size(fts1))-0.5).*(max(fts1).*addnoisefrac)) ; 
-    % % fts2 = fts2 + ((rand(size(fts2))-0.5).*(max(fts2).*addnoisefrac)) ; 
-    % % fts1 = fts1 + normrnd(0,(max(fts1).*addnoisefrac),size(fts1)) ; 
-    % % fts2 = fts2 + normrnd(0,(max(fts2).*addnoisefrac),size(fts2)) ; 
-    % nn1 = generate_phase_surrogates(fts1) ; 
-    % nn2 = generate_phase_surrogates(fts2); 
-    % nn1 = (nn1./max(nn1)).*(max(fts1).*addvarfrac) ; 
-    % nn2 = (nn2./max(nn2)).*(max(fts2).*addvarfrac) ; 
-    % 
-    % fts1 = fts1 + nn1 ; 
-    % fts2 = fts2 + nn2 ; 
-
+    % adding noise
     fts1 = add_var_n_noiseSNR(fts1,addvarfrac,snrtarg) ; 
     fts2 = add_var_n_noiseSNR(fts2,addvarfrac,snrtarg) ; 
 
@@ -704,7 +709,7 @@ end
 text(0.5,0.4,{ ...
     ['duration A: '  num2str(stimLenSweep(idx)) ' sec' ] ...
     ['duration B: ' num2str(stimLenSweep(jdx)) ' sec'] ...
-    ['abv. thr. dur.: ' num2str(mat(idx,jdx)) ' sec'] }, ...
+    ['abv. thr. dur.: ' num2str(durrmat(idx,jdx)) ' sec'] }, ...
     'units','normalized')
 
 
@@ -746,8 +751,8 @@ nexttile(TL)
 
 %res2(isnan(res2)) = 0 ; 
 
-h = imagesc(nmat) ; 
-h.AlphaData = ~isnan(nmat) ; 
+h = imagesc(nullmat) ; 
+h.AlphaData = ~isnan(nullmat) ; 
 cb = colorbar() ; 
 cb.Label.String = 'edge above thr. duration' ;
 
@@ -761,7 +766,7 @@ xlabel('activity duration node B')
 
 axis square
 
-clim([0 max(mat,[],'all')])
+clim([0 max(durrmat,[],'all')])
 
 for edx = 1:size(exemplarindxcol,1)
     imsc_addsquare(1:length(stimLenSweep)==exemplarindz(edx,1), ...
@@ -852,7 +857,7 @@ hr = (nrep-sum(isnan(res2null),3))./nrep ;
 text(0.1,0.7,{ ...
     ['duration A: '  num2str(stimLenSweep(idx)) ' sec' ] ...
     ['duration B: ' num2str(stimLenSweep(jdx)) ' sec'] ...
-    ['abv. thr. dur.: ' num2str(nmat(idx,jdx)) ' sec'] ...
+    ['abv. thr. dur.: ' num2str(nullmat(idx,jdx)) ' sec'] ...
     ['hit rate: ' num2str(hr(idx,jdx)*100) '%' ] }, ...
     'units','normalized')
 
@@ -959,7 +964,7 @@ lll = stimLenSweep+stimLenSweep' ;
 cm = gray(100); 
 
 nt = nexttile()
-scatter(mat(:),nmat(:),30,lll(:),'filled')
+scatter(durrmat(:),nullmat(:),30,lll(:),'filled')
 xlabel('above thr. duration, sim')
 ylabel('above thr. duration, null')
 xlim([0 9])
@@ -974,7 +979,7 @@ nt = nexttile
 
 
 % scatter of time in simulated, vs hitrate for null
-resmat = mat .* 1;
+resmat = durrmat .* 1;
 resmat(isnan(resmat)) = 0 ; 
 h = scatter(resmat(:),hr(:).*100,30,lll(:),'filled') ; 
 %h.MarkerFaceColor = [0.8 0.8 0.8 ] ; 
@@ -1000,7 +1005,115 @@ filename = [out_figdir '/grid_null_mats.pdf' ] ;
 print(filename,'-dpdf','-vector')
 close(gcf)
 
+%% make supp sim matrix with colored tiles
+
+tiledlayout(1,3)
+
+cmdurs = plasma(3) ; 
+
+durcats = [ 0 1.4 ; 1.4 2.88 ; 2.88 10 ; 10 100 ] ; 
+
+nexttile()
+
+h = imagesc(durrmat) ; 
+h.AlphaData = ~isnan(durrmat) ; 
+cb = colorbar() ; 
+cb.Label.String = 'edge above thr. duration' ;
+
+yticks(1:2:length(stimLenSweep))
+yticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
+ylabel('activity duration node A')
+
+xticks(1:2:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
+xlabel('activity duration node B')
+
+axis square
+colormap(acton(100))
+
+clim([0 max(durrmat,[],'all')])
+
+nexttile()
+
+h = imagesc(durrmat) ; 
+h.AlphaData = ~isnan(durrmat) ; 
+cb = colorbar() ; 
+cb.Label.String = 'edge above thr. duration' ;
+
+yticks(1:2:length(stimLenSweep))
+yticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
+ylabel('activity duration node A')
+
+xticks(1:2:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
+xlabel('activity duration node B')
+
+axis square
+colormap(acton(100))
+
+clim([0 max(durrmat,[],'all')])
+
+for idx = 1:3
+    % high entries
+    squrents = ~isnan(durrmat) & (durrmat >= durcats(idx,1) ) & (durrmat < durcats(idx,2)) ; 
+    [u,v] = find(squrents) ; 
+    n = size(durrmat,1) ; 
+    for edx = 1:length(u)
+    
+        % imsc_addsquare(ca1,ca2,mirrorit,linecolor,linewidth)
+    
+        imsc_addsquare(1:n==u(edx), ...
+            1:n==v(edx), ...
+            0,cmdurs(idx,:),2)
+    
+    end
+end
+
+nt = nexttile()
+
+h = imagesc(durrmat) ; 
+h.AlphaData = ~isnan(zeros(size(durrmat))) ; 
+cb.Label.String = 'edge above thr. duration' ;
+axis square
+
+for idx = 1:3
+    % high entries
+    squrents = ~isnan(durrmat) & (durrmat >= durcats(idx,1) ) & (durrmat < durcats(idx,2)) ; 
+    [u,v] = find(squrents) ; 
+    n = size(durrmat,1) ; 
+    for edx = 1:length(u)
+    
+        % imsc_addsquare(ca1,ca2,mirrorit,linecolor,linewidth)
+    
+        imsc_addsquare(1:n==u(edx), ...
+            1:n==v(edx), ...
+            0,cmdurs(idx,:),2)
+    
+    end
+end
+
+colormap(nt,[1 1 1])
+
+yticks(1:2:length(stimLenSweep))
+yticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
+ylabel('activity duration node A')
+
+xticks(1:2:length(stimLenSweep))
+xticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
+xlabel('activity duration node B')
+
+
 %%
+
+set(gcf,'Color','w')
+orient(gcf,'landscape')
+set(gcf,'Position',[0 100 1000 400])
+
+out_figdir = [ './reports/figures/supp/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/durr_mat_w_colors.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
 
 %% now vary the length of both durations, MOREEEE
 

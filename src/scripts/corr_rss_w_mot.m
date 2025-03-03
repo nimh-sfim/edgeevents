@@ -35,9 +35,10 @@ loadConf = load_hcp_regressors('/Users/faskowitzji/joshstuff/data/hcp352_regress
 
 %% now read in spike lengths to make a histogram of lengths
 
-for sdx = subsets
+for sdx = subsets(1)
 
     corr_w_mot.(sdx{1}).ccMoto = zeros(3,length(sublist.(sdx{1}))) ; 
+    corr_w_mot.(sdx{1}).xcov_inter_Moto = zeros(85,length(sublist.(sdx{1}))) ; 
     corr_w_mot.(sdx{1}).xcov_long_Moto = zeros(85,length(sublist.(sdx{1}))) ; 
     corr_w_mot.(sdx{1}).xcov_short_Moto = zeros(85,length(sublist.(sdx{1}))) ; 
 
@@ -72,6 +73,7 @@ for sdx = subsets
         %% xcov
 
         corr_w_mot.(sdx{1}).xcov_short_Moto(:,idx) = xcov(etsrss_o(:,1),motsig,42,'normalized') ;
+        corr_w_mot.(sdx{1}).xcov_inter_Moto(:,idx) = xcov(etsrss_o(:,2),motsig,42,'normalized') ;
         corr_w_mot.(sdx{1}).xcov_long_Moto(:,idx) = xcov(etsrss_o(:,3),motsig,42,'normalized') ;
 
 
@@ -86,16 +88,16 @@ save(filename,'corr_w_mot','-v7.3')
 
 %%
 
-tiledlayout(1,2)
+tiledlayout(1,3)
 
 cc = inferno(10) ; 
 
-plotnames = {'xcov_short_Moto' 'xcov_long_Moto' } ; 
+plotnames = {'xcov_short_Moto' 'xcov_inter_Moto' 'xcov_long_Moto' } ; 
 
-longerplotnames1 = {'short' 'long' } ; 
-longerplotnames2 = {'mot' 'mot'  } ; 
+longerplotnames1 = {'short' 'inter' 'long' } ; 
+longerplotnames2 = {'mot' 'mot' 'mot'  } ; 
 
-for idx = 1:2
+for idx = 1:3
 
     nexttile
     
@@ -133,17 +135,17 @@ for idx = 1:2
     
     title([longerplotnames1{idx} ' vs. ' longerplotnames2{idx} ])
 
-    if idx == 3 || idx == 4 
+    if idx == 2
         xlabel('time (sec)')
     end
 
-    if idx == 1 || idx == 3
+    if idx == 1 
         ylabel('correlation')
     end
 
 end
 
-set(gcf,'Position',[100 100 1000 400])
+set(gcf,'Position',[100 100 800 200])
 set(gcf,'Color','w')
 
 %%
@@ -151,10 +153,38 @@ set(gcf,'Color','w')
 out_figdir = [ './reports/figures/figD/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/xcorr_w_mot.pdf' ] ; 
-print(filename,'-dpdf','-bestfit')
+print(filename,'-dpdf')
 close(gcf)
 
-%% check high FD moments
+%%
+
+tiledlayout(1,3,'TileIndexing','rowmajor')
+
+nexttile()
+histogram(squeeze(corr_w_mot.(sdx{1}).ccMoto(1,:)))
+title('short vs mot.')
+
+ylabel('count')
+
+nexttile()
+histogram(squeeze(corr_w_mot.(sdx{1}).ccMoto(2,:)))
+title('inter vs mot.')
+
+nexttile()
+histogram(squeeze(corr_w_mot.(sdx{1}).ccMoto(3,:)))
+title('long vs mot.')
+
+
+set(gcf,'Position',[100 100 800 400])
+set(gcf,'Color','w')
+
+%%
+
+out_figdir = [ './reports/figures/figD/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/corr_w_mot.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
 
 
 

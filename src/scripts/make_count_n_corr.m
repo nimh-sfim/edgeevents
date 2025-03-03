@@ -83,7 +83,9 @@ spike_len_mats = struct() ;
 for sdx = subsets
 
     spike_len_mats.(sdx{1}) = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
-    
+    spike_len80_mats.(sdx{1}) = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
+    spike_len95_mats.(sdx{1}) = zeros(finfo.nnodes,finfo.nnodes,length(sublist.(sdx{1}))) ; 
+
     for idx = 1:length(sublist.(sdx{1}))
     
         disp(idx)
@@ -95,6 +97,15 @@ for sdx = subsets
        
         mm = mksq(cellfun(@mean,readdat.spike_len_cell )) ; 
         spike_len_mats.(sdx{1})(:,:,idx) = mm(1:finfo.nnodes,1:finfo.nnodes) ;
+
+        mm2 = cellfun(@(x_) prctile(x_,[ 80 95 ]),readdat.spike_len_cell ,'UniformOutput',false) ; 
+
+        mm80 = mksq(cellfun(@(x_) x_(1),mm2)) ; 
+        mm95 = mksq(cellfun(@(x_) x_(2),mm2)) ; 
+
+        spike_len80_mats.(sdx{1})(:,:,idx) = mm80(1:finfo.nnodes,1:finfo.nnodes) ;
+        spike_len95_mats.(sdx{1})(:,:,idx) = mm95(1:finfo.nnodes,1:finfo.nnodes) ;
+
     end
 
 end
@@ -103,6 +114,13 @@ end
 
 filename = [ DD.PROC '/allspk_len_indiv_' OUTSTR '.mat' ] ; 
 save(filename,'spike_len_mats','-v7.3')
+
+filename = [ DD.PROC '/allspk_len_indiv80_' OUTSTR '.mat' ] ; 
+save(filename,'spike_len80_mats','-v7.3')
+
+filename = [ DD.PROC '/allspk_len_indiv95_' OUTSTR '.mat' ] ; 
+save(filename,'spike_len95_mats','-v7.3')
+
 
 %% and get the fc for each subj
 
@@ -217,58 +235,67 @@ filename = [out_figdir '/example_ets_count.pdf' ] ;
 print(filename,'-dpdf')
 close(gcf)
 
-%% compare count vs fc
+%% DEFINE MEAN MATS
+
+meanlen = mean(spike_len_mats.subset1,3,"omitmissing").*finfo.TR ; 
+meanlen(1:size(meanlen)+1:end) = nan ;
 
 meanc = mean(allspike_conn_indiv.subset1,3) ; 
 meanc = meanc(1:200,1:200) ; 
 
-tiledlayout(1,3)
-
-nexttile()
-imsc_grid_comm(meanc,parc.ca(1:finfo.nnodes),0,[0.8 0.8 0.8],0.5)
-colormap(flipud(blues()))
-cb = colorbar ;
-cb.Label.String = "count" ; 
-axis square
-xticks('')
-yticks('')
-title('mean count matrix')
-
-nt = nexttile()
-imsc_grid_comm(meanfc,parc.ca(1:finfo.nnodes),0,[0 0 0],0.5)
-colormap(nt,rdbu())
-cb = colorbar ;
-cb.Label.String = "correlation mag." ; 
-axis square
-xticks('')
-yticks('')
-clim([-0.8 0.8])
-title('mean correlation matrix')
-
-nt = nexttile()
-h = histscatter(tv(meanfc),tv(meanc),50) ;
-% h.MarkerFaceColor = [0.5 0.2 0.5] ;
-% h.MarkerFaceAlpha = 0.25 ; 
-% h.MarkerEdgeAlpha = 0 ;
-colormap(nt,purples())
-cb = colorbar() ; 
-cb.Label.String = 'bin count'
-ylabel('count')
-xlabel('correlation')
-axis square
-grid minor
-title('mean corr. vs count')
-
-%%
-
-set(gcf,'Position',[100 100 800 200])
-set(gcf,'Color','w')
-
-out_figdir = [ './reports/figures/figS/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/corr_vs_count.pdf' ] ; 
-print(filename,'-dpdf','-vector')
-close(gcf)
+%% compare count vs fc
+% IMAGE THIS LATER, below 
+% 
+% meanc = mean(allspike_conn_indiv.subset1,3) ; 
+% meanc = meanc(1:200,1:200) ; 
+% 
+% tiledlayout(1,3)
+% 
+% nexttile()
+% imsc_grid_comm(meanc,parc.ca(1:finfo.nnodes),0,[0.8 0.8 0.8],0.5)
+% colormap(flipud(blues()))
+% cb = colorbar ;
+% cb.Label.String = "count" ; 
+% axis square
+% xticks('')
+% yticks('')
+% title('mean count matrix')
+% 
+% nt = nexttile()
+% imsc_grid_comm(meanfc,parc.ca(1:finfo.nnodes),0,[0 0 0],0.5)
+% colormap(nt,rdbu())
+% cb = colorbar ;
+% cb.Label.String = "correlation mag." ; 
+% axis square
+% xticks('')
+% yticks('')
+% clim([-0.8 0.8])
+% title('mean correlation matrix')
+% 
+% nt = nexttile()
+% h = histscatter(tv(meanfc),tv(meanc),50) ;
+% % h.MarkerFaceColor = [0.5 0.2 0.5] ;
+% % h.MarkerFaceAlpha = 0.25 ; 
+% % h.MarkerEdgeAlpha = 0 ;
+% colormap(nt,purples())
+% cb = colorbar() ; 
+% cb.Label.String = 'bin count'
+% ylabel('count')
+% xlabel('correlation')
+% axis square
+% grid minor
+% title('mean corr. vs count')
+% 
+% %%
+% 
+% set(gcf,'Position',[100 100 800 200])
+% set(gcf,'Color','w')
+% 
+% out_figdir = [ './reports/figures/figS/' ]
+% mkdir(out_figdir)
+% filename = [out_figdir '/corr_vs_count.pdf' ] ; 
+% print(filename,'-dpdf','-vector')
+% close(gcf)
 
 %%
 
@@ -341,44 +368,9 @@ filename = [out_figdir '/corr_vs_count_indivhist.pdf' ] ;
 print(filename,'-dpdf','-vector')
 close(gcf)
 
-%%
-
-
-out_figdir = [ './reports/figures/figS/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/burst2_sys.pdf' ] ; 
-print(filename,'-dpdf')
-close(gcf)
-
-
-%% and system maps
-
-g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
-
-remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
-cmap = purples(25) ; 
-
-fcn_boxpts(mean(countVcorr_nodewise)',...
-    remap_labs,repmat(cmap(1,:),17,1),...
-    0,parc.names(g1sort))
-%([0 8.5])
-
-set(gcf,'Position',[100 100 400 400])
-set(gcf,'Color','w')
-
-ylabel('mean coupling')
-set(gca,"TickLabelInterpreter",'none')
-
-out_figdir = [ './reports/figures/figS/' ]
-mkdir(out_figdir)
-filename = [out_figdir '/cortex_corrNcount_sys.pdf' ] ; 
-print(filename,'-dpdf')
-close(gcf)
-
 %% compare corrVcount across cortex
 
-countVcorr_nodewise = zeros(length(sublist.subset1),finfo.nnodes) ; 
-%countVcorr_nodewise2 = zeros(length(sublist.subset1),finfo.nnodes) ; 
+countVcorr_nodewise_wsubj = zeros(length(sublist.subset1),finfo.nnodes) ; 
 
 for idx = 1:length(sublist.subset1)
     disp(idx)
@@ -390,19 +382,19 @@ for idx = 1:length(sublist.subset1)
     mm = mm(1:200,1:200); 
     ff = ff(1:200,1:200) ; 
 
-    countVcorr_nodewise(idx,:) = arrayfun(@(i_) corr(mm(:,i_),ff(:,i_),'type','s'),1:finfo.nnodes) ;
+    countVcorr_nodewise_wsubj(idx,:) = arrayfun(@(i_) corr(mm(:,i_),ff(:,i_),'type','s'),1:finfo.nnodes) ;
     %countVcorr_nodewise2(idx,:) = arrayfun(@(i_) IPN_ccc([mm(:,i_) ff(:,i_)]),1:finfo.nnodes) ;
 
 end
 
 %%
 
-parc_plot_wcolorbar(mean(countVcorr_nodewise),surfss,annotm,...
-    [prctile(mean(countVcorr_nodewise),0) prctile(mean(countVcorr_nodewise),100)],flipud(purples(50)),[100 100 600 1000])
+parc_plot_wcolorbar(mean(countVcorr_nodewise_wsubj),surfss,annotm,...
+    [prctile(mean(countVcorr_nodewise_wsubj),0) prctile(mean(countVcorr_nodewise_wsubj),100)],flipud(purples(50)),[100 100 600 1000])
 
 out_figdir = [ './reports/figures/figS/' ]
 mkdir(out_figdir)
-filename = [out_figdir '/cortex_corrNcount.pdf' ] ; 
+filename = [out_figdir '/cortex_corrNcount_subj.pdf' ] ; 
 print(filename,'-dpdf')
 close(gcf)
 
@@ -411,16 +403,11 @@ close(gcf)
 g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
 
 remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
-%remap_colors = remaplabs(1:17,g1sort,1:17) ; 
-% cmap = get_nice_yeo_cmap('grad1') ; 
 cmap = purples(25) ; 
-%cmap = cmap(1:17,:) ; 
 
-
-fcn_boxpts(mean(countVcorr_nodewise)',...
+fcn_boxpts(mean(countVcorr_nodewise_wsubj)',...
     remap_labs,repmat(cmap(1,:),17,1),...
     0,parc.names(g1sort))
-%([0 8.5])
 
 set(gcf,'Position',[100 100 400 400])
 set(gcf,'Color','w')
@@ -430,7 +417,7 @@ set(gca,"TickLabelInterpreter",'none')
 
 out_figdir = [ './reports/figures/figS/' ]
 mkdir(out_figdir)
-filename = [out_figdir '/cortex_corrNcount_sys.pdf' ] ; 
+filename = [out_figdir '/cortex_corrNcount_subj_sys.pdf' ] ; 
 print(filename,'-dpdf')
 close(gcf)
 
@@ -439,11 +426,11 @@ close(gcf)
 np = 10000 ; 
 pres = nan(np,1) ; 
 for idx = 1:np 
-    [~,tt,~] = anova1(mean(countVcorr_nodewise),parc.ca(randperm(200)),'off') ; 
+    [~,tt,~] = anova1(mean(countVcorr_nodewise_wsubj),parc.ca(randperm(200)),'off') ; 
     pres(idx) = tt{2,5} ; 
 end
 % emp
-[~,ttt,sss] = anova1(mean(countVcorr_nodewise),parc.ca(1:200),'off') ; 
+[~,ttt,sss] = anova1(mean(countVcorr_nodewise_wsubj),parc.ca(1:200),'off') ; 
 % ttt =
 % 
 %   4×6 cell array
@@ -453,7 +440,7 @@ end
 %     {'Error' }    {[0.1948]}    {[183]}    {[  0.0011]}    {0×0 double}    {0×0 double  }
 %     {'Total' }    {[0.3255]}    {[199]}    {0×0 double}    {0×0 double}    {0×0 double  }
 
-(sum(pres>=ttt{2,5})+1) / (np+1)
+assert(( (sum(pres>=ttt{2,5})+1) / (np+1) ) < 0.05,'OMNIBUS NOT SIG')
 
 % tukey HSD
 
@@ -464,17 +451,111 @@ mmm = zeros(17) ;
 mmm(trilm) = mm(:,6) ;
 mmm = mmm + mmm' ; 
 
-mksq(fdr_bh(tv(mmm)))
+h = imsc_grid_comm(mksq(fdr_bh(tv(mmm(g1sort,g1sort)))),1:17,0,[],[],parc.names(g1sort)) ; 
+colormap([1 1 1 ; cmap(10,:)])
+axis square
 
-%% finally, spike lengths
+xticks('')
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_corrNcount_subj_sys_sig.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+%% compare fc vs count at node level, across cortex
+
+countVcorr_nodewise_mean = diag(corr(meanlen,meanfc,'Rows','pairwise','type','s')) ; 
+
+dat = countVcorr_nodewise_mean ; 
+parc_plot_wcolorbar(dat,surfss,annotm,...
+    [prctile(dat,0) prctile(dat,100)],flipud(purples(50)),[100 100 600 1000])
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_corrNcount_mean.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+%% 
+
+g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
+
+remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
+cmap = purples(25) ; 
+
+fcn_boxpts(countVcorr_nodewise_mean(:),...
+    remap_labs,repmat(cmap(1,:),17,1),...
+    0,parc.names(g1sort))
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+ylabel('mean coupling')
+set(gca,"TickLabelInterpreter",'none')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_corrNcount_mean_sys.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+%%
+
+np = 10000 ; 
+pres = nan(np,1) ; 
+for idx = 1:np 
+    [~,tt,~] = anova1(countVcorr_nodewise_mean(:),parc.ca(randperm(200)),'off') ; 
+    pres(idx) = tt{2,5} ; 
+end
+% emp
+[~,ttt,sss] = anova1(countVcorr_nodewise_mean(:),parc.ca(1:200),'off') ; 
+% ttt =
+% 
+%   4×6 cell array
+% 
+%     {'Source'}    {'SS'    }    {'df' }    {'MS'      }    {'F'       }    {'Prob>F'    }
+%     {'Groups'}    {[1.2002]}    {[ 16]}    {[  0.0750]}    {[ 18.5723]}    {[2.4347e-30]}
+%     {'Error' }    {[0.7391]}    {[183]}    {[  0.0040]}    {0×0 double}    {0×0 double  }
+%     {'Total' }    {[1.9393]}    {[199]}    {0×0 double}    {0×0 double}    {0×0 double  }
+
+assert(( (sum(pres>=ttt{2,5})+1) / (np+1) ) < 0.05,'OMNIBUS NOT SIG')
+
+% tukey HSD
+mm = multcompare(sss,'Alpha',0.001,'Display','off') ; 
+trilm = logical(tril(ones(17),-1)) ;
+mmm = zeros(17) ; 
+mmm(trilm) = mm(:,6) ;
+mmm = mmm + mmm' ; 
+
+h = imsc_grid_comm(mksq(fdr_bh(tv(mmm(g1sort,g1sort)))),1:17,0,[],[],parc.names(g1sort)) ; 
+colormap([1 1 1 ; cmap(10,:)])
+axis square
+
+xticks('')
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_corrNcount_mean_sys_sig.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+%% EVENT LENGTHS FIG
 
 cmgreens = flipud(greens(100)) ; 
 
 meanlen = mean(spike_len_mats.subset1,3,"omitmissing").*finfo.TR ; 
 meanlen(1:size(meanlen)+1:end) = nan ;
 
-parc_plot_wcolorbar(mean(meanlen,'omitmissing'),surfss,annotm,...
-    [min(mean(meanlen,"omitmissing")) max(mean(meanlen,'omitmissing'))],cmgreens,[100 100 600 1000])
+dat = mean(meanlen,'omitmissing') ; 
+parc_plot_wcolorbar(dat,surfss,annotm,...
+    [min(dat) max(dat)],cmgreens,[100 100 600 1000])
 
 out_figdir = [ './reports/figures/figS/' ]
 mkdir(out_figdir)
@@ -482,61 +563,76 @@ filename = [out_figdir '/cortex_meanlength.pdf' ] ;
 print(filename,'-dpdf')
 close(gcf)
 
-%% compare count vs length
+% and a rank transformed version 
 
-tiledlayout(1,3)
+dat = mean(meanlen,'omitmissing') ; 
+%dat = abs(tiedrank(dat)-(length(dat)+1)) ; 
+dat = tiedrank(dat) ; 
 
-nt = nexttile()
-imsc_grid_comm(meanlen,parc.ca(1:finfo.nnodes),0,[0 0 0],0.5)
-colormap(nt,cmgreens)
-cb = colorbar ;
-cb.Label.String = "sec." ; 
-axis square
-xticks('')
-yticks('')
-title('mean event durration matrix')
-bootci
-
-nt = nexttile()
-imsc_grid_comm(meanc,parc.ca(1:finfo.nnodes),0,[0.8 0.8 0.8],0.5)
-colormap(nt,flipud(blues()))
-cb = colorbar ;
-cb.Label.String = "count" ; 
-axis square
-xticks('')
-yticks('')
-title('mean count matrix')
-
-nt = nexttile()
-h = histscatter(tv(meanc),tv(meanlen),50) ;
-% h.MarkerFaceColor = [0.5 0.2 0.5] ;
-% h.MarkerFaceAlpha = 0.25 ; 
-% h.MarkerEdgeAlpha = 0 ;
-colormap(nt,purples())
-cb = colorbar() ; 
-%clim([0 80])
-cb.Label.String = 'bin count'
-ylabel('durration')
-xlabel('count')
-axis square
-grid minor
-title('mean count vs durration')
-corr(tv(meanc),tv(meanlen),'type','s')
-
-%%
-
-set(gcf,'Position',[100 100 800 200])
-set(gcf,'Color','w')
+parc_plot_wcolorbar(dat,surfss,annotm,...
+    [min(dat) max(dat)],cmgreens,[100 100 600 1000])
 
 out_figdir = [ './reports/figures/figS/' ]
 mkdir(out_figdir)
-filename = [out_figdir '/durr_vs_count.pdf' ] ; 
-print(filename,'-dpdf','-vector')
+filename = [out_figdir '/cortex_meanlength_rank.pdf' ] ; 
+print(filename,'-dpdf')
 close(gcf)
+
+%% compare count vs length
+% 
+% tiledlayout(1,3)
+% 
+% nt = nexttile()
+% imsc_grid_comm(meanlen,parc.ca(1:finfo.nnodes),0,[0 0 0],0.5)
+% colormap(nt,cmgreens)
+% cb = colorbar ;
+% cb.Label.String = "sec." ; 
+% axis square
+% xticks('')
+% yticks('')
+% title('mean event durration matrix')
+% 
+% 
+% nt = nexttile()
+% imsc_grid_comm(meanc,parc.ca(1:finfo.nnodes),0,[0.8 0.8 0.8],0.5)
+% colormap(nt,flipud(blues()))
+% cb = colorbar ;
+% cb.Label.String = "count" ; 
+% axis square
+% xticks('')
+% yticks('')
+% title('mean count matrix')
+% 
+% nt = nexttile()
+% h = histscatter(tv(meanc),tv(meanlen),50) ;
+% % h.MarkerFaceColor = [0.5 0.2 0.5] ;
+% % h.MarkerFaceAlpha = 0.25 ; 
+% % h.MarkerEdgeAlpha = 0 ;
+% colormap(nt,purples())
+% cb = colorbar() ; 
+% %clim([0 80])
+% cb.Label.String = 'bin count'
+% ylabel('durration')
+% xlabel('count')
+% axis square
+% grid minor
+% title('mean count vs durration')
+% corr(tv(meanc),tv(meanlen),'type','s')
+% 
+% %%
+% 
+% set(gcf,'Position',[100 100 800 200])
+% set(gcf,'Color','w')
+% 
+% out_figdir = [ './reports/figures/figS/' ]
+% mkdir(out_figdir)
+% filename = [out_figdir '/durr_vs_count.pdf' ] ; 
+% print(filename,'-dpdf','-vector')
+% close(gcf)
 
 %% compare mean len (map) with other explanatory maps
 
-ll = load('./data/interim/ts_variability.mat')
+ll = load('./data/interim/ts_variability.mat') ;
 
 tsnrvec = (mean(ll.tsnrdat.REST1_LR.map,2) + mean(ll.tsnrdat.REST1_RL.map,2)) ./2 ; 
 acvec = (mean(ll.acmap.REST1_LR.map,2) + mean(ll.acmap.REST1_RL.map,2)) ./2 ; 
@@ -544,7 +640,7 @@ dvarsvec = (mean(ll.dvarsdat.REST1_LR.map,2) + mean(ll.dvarsdat.REST1_RL.map,2))
 cbvvec = squeeze(niftiread('./data/external/schaefer200_cbv-32k.pscalar.nii')) ; 
 % cbfvec = squeeze(niftiread('./data/external/schaefer200_cbf-32k.pscalar.nii')) ; 
 
-tiledlayout(2,2)
+tiledlayout(1,5)
 
 nexttile()
 h = scatter_w_rho(mean(meanlen,2,'omitmissing'),acvec,'filled')
@@ -566,6 +662,26 @@ axis square
 % 
 %     0.7385
 %     0.8565
+
+nexttile()
+h = scatter_w_rho(mean(meanlen,2,'omitmissing'),mean(meanfc),'filled')
+h.MarkerFaceColor = cmgreens(50,:) ; 
+h.MarkerFaceAlpha = 0.5 ; 
+h.MarkerEdgeColor = cmgreens(60,:) ; 
+
+xlabel('node mean len. (sec)')
+ylabel('dvars (a.u.)')
+
+axis square
+
+% bootci(5000,{ @(a_,b_) corr(a_(:),b_(:),'type','s'), mean(meanlen,2,'omitmissing'), mean(meanfc)},'type','per')
+% ans =
+% 
+%   2×1 single column vector
+% 
+%     0.3992
+%     0.6084
+
 
 nexttile()
 h = scatter_w_rho(mean(meanlen,2,'omitmissing'),dvarsvec,'filled')
@@ -618,8 +734,88 @@ axis square
 % 
 %    -0.1691
 %     0.1303
-set(gcf,'Position',[100 100 500 400])
+set(gcf,'Position',[100 100 1200 400])
 set(gcf,'Color','w')
+
+%%
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/durr_vs_count_conf.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%%
+
+dat = acvec ; 
+pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dat ,...
+    'cmap',cmgreens, ...
+    'valRange', [prctile(dat,2.5) prctile(dat,97.5)], ...
+    'viewcMap',0,'newFig',0,'viewStr','all')
+set(gcf,'Position',[100 100 435 300])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_autoc.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+dat =  mean(meanfc) ; 
+pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dat ,...
+    'cmap',cmgreens, ...
+    'valRange', [prctile(dat,2.5) prctile(dat,97.5)], ...
+    'viewcMap',0,'newFig',0,'viewStr','all')
+set(gcf,'Position',[100 100 435 300])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_meanfc.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+dat = dvarsvec ; 
+pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dat ,...
+    'cmap',cmgreens, ...
+    'valRange', [prctile(dat,2.5) prctile(dat,97.5)], ...
+    'viewcMap',0,'newFig',0,'viewStr','all')
+set(gcf,'Position',[100 100 435 300])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_dvarsvec.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+dat =  tsnrvec ; 
+pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dat ,...
+    'cmap',cmgreens, ...
+    'valRange', [prctile(dat,2.5) prctile(dat,97.5)], ...
+    'viewcMap',0,'newFig',0,'viewStr','all')
+set(gcf,'Position',[100 100 435 300])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_tsnr.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+dat =  cbvvec ; 
+pp =  parc_plot(surfss,annotm,'schaefer200-yeo17', dat ,...
+    'cmap',cmgreens, ...
+    'valRange', [prctile(dat,2.5) prctile(dat,97.5)], ...
+    'viewcMap',0,'newFig',0,'viewStr','all')
+set(gcf,'Position',[100 100 435 300])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_cbv.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
 
 %% make system map
 
@@ -643,7 +839,7 @@ set(gca,"TickLabelInterpreter",'none')
 out_figdir = [ './reports/figures/figS/' ]
 mkdir(out_figdir)
 filename = [out_figdir '/meanlen_sys.pdf' ] ; 
-print(filename,'-dpdf')
+print(filename,'-dpdf','-vector')
 close(gcf)
 
 %% and anova on that map
@@ -655,7 +851,7 @@ for idx = 1:np
     pres(idx) = tt{2,5} ; 
 end
 % emp
-[~,ttt,~] = anova1(mean(meanlen,2,'omitmissing'),parc.ca(1:200),'off') ; 
+[~,ttt,sss] = anova1(mean(meanlen,2,'omitmissing'),parc.ca(1:200),'off') ; 
 % ttt =
 % 
 %   4×6 cell array
@@ -668,6 +864,66 @@ end
 % ans =
 % 
 %    9.9990e-05
+
+assert(( (sum(pres>=ttt{2,5})+1) / (np+1) ) < 0.05,'OMNIBUS NOT SIG')
+
+% tukey HSD
+mm = multcompare(sss,'Alpha',0.001,'Display','off') ; 
+trilm = logical(tril(ones(17),-1)) ;
+mmm = zeros(17) ; 
+mmm(trilm) = mm(:,6) ;
+mmm = mmm + mmm' ; 
+
+h = imsc_grid_comm(mksq(fdr_bh(tv(mmm(g1sort,g1sort)))),1:17,0,[],[],parc.names(g1sort)) ; 
+colormap([1 1 1 ; cmgreens(45,:)])
+axis square
+
+xticks('')
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/meanlen_sys_sig.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%%
+
+perminds = load('./data/external/schaefer-yeo7_200node_permuted_inds.mat') ; 
+
+rng(42)
+[bmat,phigh,plow] = run_blocky_spintest(meanlen,parc.ca(1:200),perminds.PERMS,10000) ; 
+
+%%
+
+h = imagesc(bmat)
+colormap(cmgreens)
+tmp = h.CData ; 
+
+sigmask = fdr_bh_uthelp(phigh(g1sort,g1sort)) ; 
+sigmask(sigmask==0) = nan ;
+h = imsc_grid_comm(sigmask.*bmat(g1sort,g1sort),1:17,[],[1 1 1],[1 1 1],parc.names(g1sort))
+colormap([0.8 0.8 0.8 ; cmgreens] )
+%h.CData = tmp.* sigmask ; 
+colorbar
+axis square
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/meanlen_sys_spintest_sig.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%%
+
+h = imsc_grid_comm(bmat.*fdr_bh_uthelp(phigh),1:17,[],[],[],parc.names(g1sort)) ; 
+h.AlphaData = fdr_bh_uthelp(phigh) ~= 0 ; 
+
 
 %% get those highest areas
 
@@ -689,11 +945,6 @@ cortexplot(~cellfun(@isempty,regexpi(annotm('schaefer200-yeo17').combo_names,ann
 % xbins = prctile(xdat,0:1:100) ; % just use simple percentiles, all bins have
 %                                 % same numeber of edges
 % [eVar,xbinmid,binmean] = norm_bin_model(xdat,xbins,ydat) ; 
-
-%% TODO count vs corr figure??
-
-
-
 
 % %% TODO -- will this be added to paper?
 % 
@@ -787,7 +1038,304 @@ filename = [out_figdir '/corrVdurr_mat.pdf' ] ;
 print(filename,'-dpdf','-vector')
 close(gcf)
 
+%% make a nice plot comparing FC, count, len
+
+dat = struct() ; 
+dat.FC = meanfc ; 
+dat.len = meanlen ; 
+dat.count = meanc ; 
+
+col = struct() ; 
+col.FC = rdbu(100) ; 
+col.count = flipud(blues(100)) ; 
+col.len = flipud(greens(100)) ; 
+
+datnames = {'FC' 'count' 'len' } ; 
+datcolorbarlab = {'correlation' 'count' 'seconds'} ; 
+datdispnames = {'correlation' 'count' 'duration'} ; 
+
+tiledlayout(2,3)
+
+for idx = 1:3
+
+    nt = nexttile() 
+    imsc_grid_comm(dat.(datnames{idx}),remap_labs,1,[0.2 0.2 0.2],0.5)
+    colormap(nt,col.(datnames{idx}))
+    cb = colorbar ;
+    cb.Label.String = datcolorbarlab{idx} ; 
+    axis square
+    xticks('')
+    yticks('')
+
+    if idx == 1
+        clim([-.8 .8])
+    end
+end
+
+for idx = 1:3
+    
+    for jdx = idx+1:3
+
+        nt = nexttile()
+        h = histscatter(dat.(datnames{idx}),dat.(datnames{jdx}),50) ;
+        colormap(nt,purples())
+        cb = colorbar() ; 
+        cb.Label.String = 'bin count' ; 
+        ylabel(datdispnames{jdx})
+        xlabel(datdispnames{idx})
+        axis square
+        grid minor
+
+        rr = corr(tv(dat.(datnames{idx})),tv(dat.(datnames{jdx})),'type','s') ; 
+        text(0.1,0.9,[ '\rho: ' num2str(round(rr,2)) ],'units','normalized')
+
+    end
+end
+
+set(gcf,'Position',[100 100 800 400])
+
 %%
 
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/threemats_n_comp.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
 
+
+%% EVENT COUNTS SUPP? FIG
+
+cmblues = flipud(blues(100)) ; 
+
+meanc = mean(allspike_conn_indiv.subset1,3) ; 
+meanc = meanc(1:200,1:200) ; 
+
+dat = mean(meanc,'omitmissing') ; 
+parc_plot_wcolorbar(dat,surfss,annotm,...
+    [min(dat) max(dat)],cmblues,[100 100 600 1000])
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_meancount.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+% and a rank transformed version 
+
+dat = mean(meanc,'omitmissing') ; 
+%dat = abs(tiedrank(dat)-(length(dat)+1)) ; 
+dat = tiedrank(dat) ; 
+
+parc_plot_wcolorbar(dat,surfss,annotm,...
+    [min(dat) max(dat)],cmblues,[100 100 600 1000])
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/cortex_meancount_rank.pdf' ] ; 
+print(filename,'-dpdf')
+close(gcf)
+
+%% compare count (map) with other explanatory maps
+
+ll = load('./data/interim/ts_variability.mat') ;
+
+tsnrvec = (mean(ll.tsnrdat.REST1_LR.map,2) + mean(ll.tsnrdat.REST1_RL.map,2)) ./2 ; 
+acvec = (mean(ll.acmap.REST1_LR.map,2) + mean(ll.acmap.REST1_RL.map,2)) ./2 ; 
+dvarsvec = (mean(ll.dvarsdat.REST1_LR.map,2) + mean(ll.dvarsdat.REST1_RL.map,2)) ./2 ; 
+cbvvec = squeeze(niftiread('./data/external/schaefer200_cbv-32k.pscalar.nii')) ; 
+% cbfvec = squeeze(niftiread('./data/external/schaefer200_cbf-32k.pscalar.nii')) ; 
+
+tiledlayout(1,5)
+
+nexttile()
+h = scatter(mean(meanc,2,'omitmissing'),acvec,'filled')
+h.MarkerFaceColor = cmblues(50,:) ; 
+h.MarkerFaceAlpha = 0.5 ; 
+h.MarkerEdgeColor = cmblues(60,:) ; 
+
+xlabel('node mean count')
+ylabel('autocor. (sec)')
+axis square
+
+[ci] = bootci(5000,{ @(a_,b_) corr(a_(:),b_(:),'type','s'), mean(meanc,2,'omitmissing'), acvec},'type','per') ; 
+rho = corr(mean(meanc,2,'omitmissing'),acvec,'type','s') ;
+t = text(0.01,0.05,[ '\rho : ' num2str(round(rho,2)) ...
+    ' [' num2str(round(ci(1),2)) ',' num2str(round(ci(2),2)) ']' ],'Units','normalized') ; 
+
+
+nexttile()
+h = scatter(mean(meanc,2,'omitmissing'),mean(meanfc,2),'filled')
+h.MarkerFaceColor = cmblues(50,:) ; 
+h.MarkerFaceAlpha = 0.5 ; 
+h.MarkerEdgeColor = cmblues(60,:) ; 
+
+xlabel('node mean count')
+ylabel('correlation')
+axis square
+
+[ci] = bootci(5000,{ @(a_,b_) corr(a_(:),b_(:),'type','s'), mean(meanc,2,'omitmissing'), mean(meanfc,2)},'type','per') ; 
+rho = corr(mean(meanc,2,'omitmissing'),mean(meanfc,2),'type','s') ;
+t = text(0.01,0.05,[ '\rho : ' num2str(round(rho,2)) ...
+    ' [' num2str(round(ci(1),2)) ',' num2str(round(ci(2),2)) ']' ],'Units','normalized') ; 
+
+
+
+nexttile()
+h = scatter(mean(meanc,2,'omitmissing'),dvarsvec,'filled')
+h.MarkerFaceColor = cmblues(50,:) ; 
+h.MarkerFaceAlpha = 0.5 ; 
+h.MarkerEdgeColor = cmblues(60,:) ; 
+
+xlabel('node mean count')
+ylabel('arbitary units')
+axis square
+
+[ci] = bootci(5000,{ @(a_,b_) corr(a_(:),b_(:),'type','s'), mean(meanc,2,'omitmissing'), dvarsvec},'type','per') ; 
+rho = corr(mean(meanc,2,'omitmissing'),dvarsvec,'type','s') ;
+t = text(0.01,0.05,[ '\rho : ' num2str(round(rho,2)) ...
+    ' [' num2str(round(ci(1),2)) ',' num2str(round(ci(2),2)) ']' ],'Units','normalized') ; 
+
+nexttile()
+h = scatter(mean(meanc,2,'omitmissing'),tsnrvec,'filled')
+h.MarkerFaceColor = cmblues(50,:) ; 
+h.MarkerFaceAlpha = 0.5 ; 
+h.MarkerEdgeColor = cmblues(60,:) ; 
+
+xlabel('node mean count')
+ylabel('correlation')
+axis square
+
+[ci] = bootci(5000,{ @(a_,b_) corr(a_(:),b_(:),'type','s'), mean(meanc,2,'omitmissing'), tsnrvec},'type','per') ; 
+rho = corr(mean(meanc,2,'omitmissing'),tsnrvec,'type','s') ;
+t = text(0.01,0.05,[ '\rho : ' num2str(round(rho,2)) ...
+    ' [' num2str(round(ci(1),2)) ',' num2str(round(ci(2),2)) ']' ],'Units','normalized') ; 
+
+nexttile()
+h = scatter(mean(meanc,2,'omitmissing'),cbvvec,'filled')
+h.MarkerFaceColor = cmblues(50,:) ; 
+h.MarkerFaceAlpha = 0.5 ; 
+h.MarkerEdgeColor = cmblues(60,:) ; 
+
+xlabel('node mean count')
+ylabel('correlation')
+axis square
+
+[ci] = bootci(5000,{ @(a_,b_) corr(a_(:),b_(:),'type','s'), mean(meanc,2,'omitmissing'), cbvvec},'type','per') ; 
+rho = corr(mean(meanc,2,'omitmissing'),cbvvec,'type','s') ;
+t = text(0.01,0.05,[ '\rho : ' num2str(round(rho,2)) ...
+    ' [' num2str(round(ci(1),2)) ',' num2str(round(ci(2),2)) ']' ],'Units','normalized') ; 
+
+
+%%
+
+set(gcf,'Position',[100 100 1200 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/count_conf.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%% make system map
+
+g1sort = [ 13 17 14 8 16 11 7 15  12 10  1 3 6 9 2  4 5 ] ; 
+
+remap_labs = remaplabs(parc.ca(1:200),g1sort,1:17) ; 
+
+fcn_boxpts(mean(meanlen,2,'omitmissing'),...
+    remap_labs,repmat(cmblues(90,:),17,1),...
+    0,parc.names(g1sort))
+%([0 8.5])
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+ylabel('node mean dur.')
+set(gca,"TickLabelInterpreter",'none')
+
+%%
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/meancount_sys.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%% and anova on that map
+
+np = 10000 ; 
+pres = nan(np,1) ; 
+for idx = 1:np 
+    [~,tt,~] = anova1(mean(meanc,2,'omitmissing'),parc.ca(randperm(200)),'off') ; 
+    pres(idx) = tt{2,5} ; 
+end
+% emp
+[~,ttt,sss] = anova1(mean(meanc,2,'omitmissing'),parc.ca(1:200),'off') ; 
+% ttt =
+% 
+%   4×6 cell array
+% 
+%     {'Source'}    {'SS'      }    {'df' }    {'MS'      }    {'F'       }    {'Prob>F'    }
+%     {'Groups'}    {[246.4757]}    {[ 16]}    {[ 15.4047]}    {[ 20.0616]}    {[3.5272e-32]}
+%     {'Error' }    {[140.5205]}    {[183]}    {[  0.7679]}    {0×0 double}    {0×0 double  }
+%     {'Total' }    {[386.9962]}    {[199]}    {0×0 double}    {0×0 double}    {0×0 double  }
+(sum(pres>=ttt{2,5})+1) / (np+1)
+% ans =
+% 
+%    9.9990e-05
+
+assert(( (sum(pres>=ttt{2,5})+1) / (np+1) ) < 0.05,'OMNIBUS NOT SIG')
+
+% tukey HSD
+mm = multcompare(sss,'Alpha',0.001,'Display','off') ; 
+trilm = logical(tril(ones(17),-1)) ;
+mmm = zeros(17) ; 
+mmm(trilm) = mm(:,6) ;
+mmm = mmm + mmm' ; 
+
+h = imsc_grid_comm(mksq(fdr_bh(tv(mmm(g1sort,g1sort)))),1:17,0,[],[],parc.names(g1sort)) ; 
+colormap([1 1 1 ; cmgreens(45,:)])
+axis square
+
+xticks('')
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/meanlen_sys_sig.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
+
+%%
+
+perminds = load('./data/external/schaefer-yeo7_200node_permuted_inds.mat') ; 
+
+rng(42)
+[bmat,phigh,plow] = run_blocky_spintest(meanlen,parc.ca(1:200),perminds.PERMS,10000) ; 
+
+%%
+
+h = imagesc(bmat)
+colormap(cmgreens)
+tmp = h.CData ; 
+
+sigmask = fdr_bh_uthelp(phigh(g1sort,g1sort)) ; 
+sigmask(sigmask==0) = nan ;
+h = imsc_grid_comm(sigmask.*bmat(g1sort,g1sort),1:17,[],[1 1 1],[1 1 1],parc.names(g1sort))
+colormap([0.8 0.8 0.8 ; cmgreens] )
+%h.CData = tmp.* sigmask ; 
+colorbar
+axis square
+
+set(gcf,'Position',[100 100 400 400])
+set(gcf,'Color','w')
+
+out_figdir = [ './reports/figures/figS/' ]
+mkdir(out_figdir)
+filename = [out_figdir '/meanlen_sys_spintest_sig.pdf' ] ; 
+print(filename,'-dpdf','-vector')
+close(gcf)
 
