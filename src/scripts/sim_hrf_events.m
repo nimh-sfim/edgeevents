@@ -492,7 +492,7 @@ snrtarg = 2 ;
 
 hrf = getcanonicalhrf_wmag(1/neuralHz,1/neuralHz) ; 
 
-fmriHz = 1/TR ; 
+fmriHz = 1/finfo.TR ; 
 
 %spkThrSweep = ( 2:0.05:3 ) ; 
 stimLenSweep = ( 0.1:0.2:5 ) ; 
@@ -924,7 +924,9 @@ close(gcf)
 
 %% plot the HR matrix
 
-TL = tiledlayout(1,3)
+hr = (nrep-sum(isnan(res2null),3))./nrep ; 
+
+TL = tiledlayout(1,4)
 TL.Title.String = 'Null data detection rates' ; 
 
 nexttile
@@ -988,16 +990,39 @@ colormap(nt,cm(10:90,:))
 cb = colorbar() ; 
 cb.Label.String = 'addivite activity dur.'
 ylim([0 100])
+xlim([0 10])
+
 axis square
 xlabel('simulated event length (non-null)')
 ylabel('detection rate (null)')
 
+nt = nexttile()
+
+% scatter of time in simulated, vs hitrate for null
+resmat = durrmat .* 1;
+resmat(isnan(resmat)) = 0 ; 
+h = scatter(resmat(resmat<5.04),hr(resmat<5.04).*100,30,lll(resmat<5.04),'filled') ; 
+%h.MarkerFaceColor = [0.8 0.8 0.8 ] ; 
+%h.MarkerFaceAlpha = 0.8 ;
+colormap(nt,cm(10:90,:))
+cb = colorbar() ; 
+cb.Label.String = 'addivite activity dur.'
+ylim([0 100])
+axis square
+xlabel('simulated event length (non-null)')
+ylabel('detection rate (null)')
+ylim([0 100])
+xlim([0 10])
+colormap(nt,cm(10:90,:))
+
+yline(max(hr(resmat<5.04).*100))
+text(0.6,max(hr(resmat<5.04).*100)*1.4/100,[ 'max: ' num2str(round(max(hr(resmat<5.04).*100),2)) ],'units','normalized')
 
 %%
 
 set(gcf,'Color','w')
 orient(gcf,'landscape')
-set(gcf,'Position',[0 100 800 400])
+set(gcf,'Position',[0 100 1000 400])
 
 out_figdir = [ './reports/figures/supp/' ]
 mkdir(out_figdir)
@@ -1012,6 +1037,7 @@ tiledlayout(1,3)
 cmdurs = plasma(3) ; 
 
 durcats = [ 0 1.4 ; 1.4 2.88 ; 2.88 10 ; 10 100 ] ; 
+durcats2 = [ 0 1.4 ; 1.4 2.88 ; 2.88 5.04 ; 10 100 ] ; 
 
 nexttile()
 
@@ -1071,14 +1097,15 @@ end
 
 nt = nexttile()
 
-h = imagesc(durrmat) ; 
-h.AlphaData = ~isnan(zeros(size(durrmat))) ; 
+h = imagesc(ones(size(durrmat))) ; 
+%h.AlphaData = ~isnan(zeros(size(durrmat))) ; 
+% h.AlphaData = 
 cb.Label.String = 'edge above thr. duration' ;
 axis square
 
 for idx = 1:3
     % high entries
-    squrents = ~isnan(durrmat) & (durrmat >= durcats(idx,1) ) & (durrmat < durcats(idx,2)) ; 
+    squrents = ~isnan(durrmat) & (durrmat >= durcats2(idx,1) ) & (durrmat < durcats2(idx,2)) ; 
     [u,v] = find(squrents) ; 
     n = size(durrmat,1) ; 
     for edx = 1:length(u)
@@ -1092,7 +1119,7 @@ for idx = 1:3
     end
 end
 
-colormap(nt,[1 1 1])
+colormap(nt,[0.8 0.8 0.8])
 
 yticks(1:2:length(stimLenSweep))
 yticklabels(num2str(stimLenSweep(1:2:length(stimLenSweep))'))
@@ -1107,7 +1134,7 @@ xlabel('activity duration node B')
 
 set(gcf,'Color','w')
 orient(gcf,'landscape')
-set(gcf,'Position',[0 100 1000 400])
+set(gcf,'Position',[0 100 800 400])
 
 out_figdir = [ './reports/figures/supp/' ]
 mkdir(out_figdir)
