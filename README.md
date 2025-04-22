@@ -9,3 +9,4 @@ Links
 ------------------------------
 * [Analyses scripts](./src/scripts)
 * [Functions](./src/func/)
+* [Project wiki](../../wiki)
