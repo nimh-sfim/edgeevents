@@ -290,9 +290,9 @@ rois.sph_c = [ tt_L.table(2:end,1:3) ; tt_R.table(2:end,1:3) ] ./ 255 ;
 %%
 
 % too many edges for plot
-% rois.sph_r = normalize(sum(sigmoreA.long), 'range',[1,3]) ; 
-% viz_conn_glassbrain(sigmoreA.long,[ 0.5 .5 .5],rois)
-% 
+% % rois.sph_r = normalize(sum(sigmoreA.long), 'range',[1,3]) ; 
+% % viz_conn_glassbrain(sigmoreA.long,[ 0.5 .5 .5],rois)
+% % 
 % out_figdir = [ './reports/figures/figC/' ]
 % mkdir(out_figdir)
 % filename = [out_figdir '/longest_spike_glassbrain.png' ] ; 

@@ -30,7 +30,7 @@ nedges = ( finfo.nnodes * (finfo.nnodes-1) ) / 2 ;
 
 %% load in cardio 
 
-loadcard = load_hcp_card('/Users/faskowitzji/joshstuff/projects/edgesort/data/processed/CARD',...
+[loadcard,loadcard2] = load_hcp_card('/Users/faskowitzji/joshstuff/projects/edgesort/data/processed/CARD',...
     imglob) ; 
 
 
@@ -249,3 +249,26 @@ mkdir(out_figdir)
 filename = [out_figdir '/corr_w_card.pdf' ] ; 
 print(filename,'-dpdf')
 close(gcf)
+
+%% test test
+% % get length of 30 sec window 
+% wsz = 25*30;
+% 
+% sdx = {'subset1'} ; 
+% alldat = zeros(1200,176) ; 
+% 
+% for idx = 1:length(sublist.(sdx{1}))
+% 
+%     disp([ num2str(idx) '-' num2str(length(sublist.(sdx{1}))) ' ' sdx{1}])  ; 
+% 
+%     sind = find(cellfun(@(x_)strcmp(x_,sublist.(sdx{1})(idx)),sublist.all)) ; 
+% 
+%     cc = loadcard2(datStr(sind).sub).values{1} ; 
+%     tmp = get_simple_hrv_rmssd(cc,25,wsz) ; 
+% 
+%     % convert sig to TR units
+%     tmp2 = resampsig1d(tmp,25,1/0.72) ; 
+% 
+%     alldat(:,idx) = tmp2 ; 
+% 
+% end

@@ -24,6 +24,6 @@ OUTSTR = 'run1' ;
 %% make output directory vars
 
 DATADIR = strcat(PROJ_DIR , '/data/') ;
-DD_INTERM = strcat(DATADIR, '/interim/' ) ;
-DD_PROC = strcat(DATADIR, '/processed/' ) ;
-DD_RAW = strcat(DATADIR, '/raw/' ) ;
+DD.INTERM = strcat(DATADIR, '/interim/' ) ;
+DD.PROC = strcat(DATADIR, '/processed/' ) ;
+DD.RAW = strcat(DATADIR, '/raw/' ) ;

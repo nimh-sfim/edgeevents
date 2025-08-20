@@ -9,7 +9,7 @@ close all
 run('./config/config_hcp_sch200_1.m') 
 
 addpath('/Users/faskowitzji/Documents/MATLAB/conn/')
-addpath('/Users/faskowitzji/Documents/MATLAB/spm12/')
+addpath('/Users/faskowitzji/Documents/MATLAB/spm/')
 
 SPK_THR = 2.25 ; 
 
